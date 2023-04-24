@@ -1,0 +1,40 @@
+{
+  "name": "@liyongleihf2006/handwriting-board",
+  "version": "1.0.5",
+  "description": "手写板,支持导出画布,移动端支持双指无限拖拽",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.umd.min.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liyongleihf2006/handwriting-board.git"
+  },
+  "keywords": [
+    "canvas",
+    "handwriting",
+    "h5",
+    "javascript",
+    "js",
+    "typescript",
+    "ts",
+    "html"
+  ],
+  "author": "liyongleihf2006",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/liyongleihf2006/handwriting-board/issues"
+  },
+  "homepage": "https://github.com/liyongleihf2006/handwriting-board#readme",
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.1",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "rollup": "^3.21.0",
+    "tslib": "^2.5.0"
+  }
+}

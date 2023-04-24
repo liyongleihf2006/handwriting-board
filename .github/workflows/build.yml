@@ -1,0 +1,21 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: npm install
+      - name: Build with Rollup
+        run: npm run build
+      - name: Deploy 🚀
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }} # 您的个人访问令牌
+          publish_branch: gh-pages # 部署的目标分支
+          publish_dir: ./
+          exclude_assets: "node_modules,src,.gitignore,.npmrc,package-lock.json,package.json,REAMDE.md,rollup.config.mjs,tsconfig.json"

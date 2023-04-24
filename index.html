@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>handwriting-board</title>
+  <style>
+    body {
+      text-align: center;
+    }
+
+    .container {
+      width: 100%;
+      height: 500px;
+      touch-action: none;
+    }
+
+    .operate {
+      position: absolute;
+      left: 500px;
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="containerRef" class="container"></canvas>
+  <div class="operate">
+    <label>
+      画笔颜色
+      <select id="changeColor">
+        <option value="#333">#333</option>
+        <option value="red">red</option>
+        <option value="rgba(0,0,0,.3)">rgba(0,0,0,.3)</option>
+      </select>
+    </label>
+    <label>
+      画笔粗细
+      <select id="changeVoice">
+        <option value="1">1</option>
+        <option value="0.3">0.3</option>
+        <option value="3">3</option>
+      </select>
+    </label>
+    <button id="showGrid">显示棋盘</button>
+    <button id="hideGrid">隐藏棋盘</button>
+    <button id="showRule">显示标尺</button>
+    <button id="hideRule">隐藏标尺</button>
+    <button id="writeLocked">书写锁定</button>
+    <button id="writeUnlocked">取消书写锁定</button>
+    <button id="dragLocked">拖拽锁定</button>
+    <button id="dragUnlocked">取消拖拽锁定</button>
+    <button id="up">向上移动</button>
+    <button id="down">向下移动</button>
+    <button id="left">向左移动</button>
+    <button id="right">向右移动</button>
+    <button id="clear">清空画布</button>
+    <button id="eraser">擦除操作</button>
+    <button id="uneraser">取消擦除</button>
+    <button id="undo">后退</button>
+    <button id="redo">前进</button>
+    <button id="exportAsCanvas">导出为画布</button>
+  </div>
+  <script src="./dist/index.umd.min.js"></script>
+  <script type="module">
+    const Board = HandwritingBoard.Board;
+    const containerRef = document.querySelector('#containerRef');
+    const changeColor = document.querySelector('#changeColor');
+    const changeVoice = document.querySelector('#changeVoice');
+    const writeLocked = document.querySelector('#writeLocked');
+    const writeUnlocked = document.querySelector('#writeUnlocked');
+    const showGrid = document.querySelector('#showGrid');
+    const hideGrid = document.querySelector('#hideGrid');
+    const showRule = document.querySelector('#showRule');
+    const hideRule = document.querySelector('#hideRule');
+    const dragLocked = document.querySelector('#dragLocked');
+    const dragUnlocked = document.querySelector('#dragUnlocked');
+    const up = document.querySelector('#up');
+    const down = document.querySelector('#down');
+    const left = document.querySelector('#left');
+    const right = document.querySelector('#right');
+    const clear = document.querySelector('#clear');
+    const eraser = document.querySelector('#eraser');
+    const uneraser = document.querySelector('#uneraser');
+    const undo = document.querySelector('#undo');
+    const redo = document.querySelector('#redo');
+    const exportAsCanvas = document.querySelector('#exportAsCanvas');
+    const handwritingBoard = new Board(containerRef, {
+      grid: true,
+      gridGap: 100,
+      gridFillStyle: 'rgb(250,250,250)',
+      rule: true,
+      ruleGap: 10,
+      ruleUnitLen: 5,
+      ruleStrokeStyle: 'rgba(0,0,0,0.5)',
+      voice: 1,
+      color: '#333',
+      stack: true,
+      cleanR: 20,
+      moveCountTotal: 20,
+      writeLocked: false,
+      dragLocked: false,
+      showBorder: true,
+      borderStyle: '#333',
+      borderWidth: 2
+    });
+    changeColor.addEventListener('change', (event) => {
+      handwritingBoard.color = event.target.value;
+    })
+    changeVoice.addEventListener('change', (event) => {
+      handwritingBoard.setVoice(Number(event.target.value));
+    })
+    showGrid.addEventListener('click', () => {
+      handwritingBoard.showGrid();
+    })
+    hideGrid.addEventListener('click', () => {
+      handwritingBoard.hideGrid();
+    })
+    showRule.addEventListener('click', () => {
+      handwritingBoard.showRule();
+    })
+    hideRule.addEventListener('click', () => {
+      handwritingBoard.hideRule();
+    })
+    writeLocked.addEventListener('click', () => {
+      handwritingBoard.writeLocked = true;
+    })
+    writeUnlocked.addEventListener('click', () => {
+      handwritingBoard.writeLocked = false;
+    })
+    dragLocked.addEventListener('click', () => {
+      handwritingBoard.dragLocked = true;
+    })
+    dragUnlocked.addEventListener('click', () => {
+      handwritingBoard.dragLocked = false;
+    })
+    up.addEventListener('click', () => {
+      handwritingBoard.scrollBy(0, -100);
+    })
+    down.addEventListener('click', () => {
+      handwritingBoard.scrollBy(0, 100);
+    })
+    left.addEventListener('click', () => {
+      handwritingBoard.scrollBy(-100, 0);
+    })
+    right.addEventListener('click', () => {
+      handwritingBoard.scrollBy(100, 0);
+    })
+    clear.addEventListener('click', () => {
+      handwritingBoard.clear();
+    })
+    eraser.addEventListener('click', () => {
+      handwritingBoard.clean();
+    })
+    uneraser.addEventListener('click', () => {
+      handwritingBoard.unclean();
+    })
+    undo.addEventListener('click', () => {
+      handwritingBoard.undo();
+    })
+    redo.addEventListener('click', () => {
+      handwritingBoard.redo();
+    })
+    exportAsCanvas.addEventListener('click', () => {
+      const canvas = handwritingBoard.exportAsCanvas();
+      const dataURL = canvas.toDataURL()
+      const img = document.createElement('img');
+      img.src = dataURL;
+      img.style.border = '1px solid';
+      img.style.background = 'rgba(0,0,0,0.1)';
+      document.body.append(img);
+    })
+  </script>
+</body>
+
+</html>
