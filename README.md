@@ -5,7 +5,7 @@
 
 #### 在线实例
 
-[sample](https://liyongleihf2006.github.io/handwriting-board/)
+[sample](https://liyongleihf2006.github.io/handwriting-board/index.html)
 
 **安装**
 ```sh
