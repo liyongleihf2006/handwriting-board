@@ -1,4 +1,8 @@
+import { WriteModel } from './enum';
+export type OnChange = (canvas:HTMLCanvasElement)=>{};
 export type Options = {
+  // enableEagleEyeMode?:boolean,
+  writeModel?:WriteModel,
   grid?:boolean,
   gridGap?:number,
   gridFillStyle?:string,
@@ -17,6 +21,7 @@ export type Options = {
   borderStyle?:string;
   borderWidth?:number;
   containerOffset?:ContainerOffset
+  onChange?: OnChange;
 }
 export type PointsGroup = {
   corners:[[number,number],[number,number],[number,number],[number,number]][],

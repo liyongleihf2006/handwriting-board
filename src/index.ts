@@ -1,8 +1,18 @@
-import type {Options,PointsGroup,StackType,ContainerOffset,Coords} from './type';
+import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange} from './type';
 import {Stack} from './stack';
+import {WriteModel} from './enum';
+export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
 }
+/**
+ * 是否启用全览模式
+ */
+// const defaultEnableEagleEyeMode = false;
+/**
+ * 绘画模式 书写模式 绘画模式
+ */
+const defaultWriteModel = WriteModel.WRITE;
 /**
  * 是否使用棋盘
  */
@@ -71,7 +81,10 @@ const defaultBorderStyle = '#333';
  * 边框的宽度
  */
 const defaultBorderWidth = 2;
+
 const defaultOptions = {
+  // enableEagleEyeMode:defaultEnableEagleEyeMode,
+  writeModel:defaultWriteModel,
   grid:defaultGrid,
   gridGap:defaultGridGap,
   gridFillStyle:defaultGridFillStyle,
@@ -91,6 +104,8 @@ const defaultOptions = {
   borderWidth:defaultBorderWidth
 }
 export default class Board{
+  // private eagleEyeOffscreen!:OffscreenCanvas;
+  // private eagleEyeOffscreenCtx!:OffscreenCanvasRenderingContext2D;
   private width:number;
   private height:number;
   private ctx:CanvasRenderingContext2D;
@@ -111,9 +126,11 @@ export default class Board{
   private maxY!:number;
   private moveT = false;
 
+  // enableEagleEyeMode:boolean;
+  writeModel:WriteModel;
   grid:boolean;
   gridGap:number;
-  gridPattern:CanvasPattern;
+  bgPattern:CanvasPattern;
   gridFillStyle:string;
   rule:boolean;
   ruleGap:number;
@@ -130,7 +147,10 @@ export default class Board{
   borderStyle:string;
   borderWidth:number;
   containerOffset:ContainerOffset;
+  onChange:OnChange|undefined;
   constructor(public canvas:HTMLCanvasElement,options:Options = defaultOptions){
+    // this.enableEagleEyeMode = options.enableEagleEyeMode ?? defaultEnableEagleEyeMode;
+    this.writeModel = options.writeModel ?? defaultWriteModel;
     this.grid = options.grid ?? defaultGrid;
     this.gridGap = options.gridGap ?? defaultGridGap;
     this.gridFillStyle = options.gridFillStyle ?? defaultGridFillStyle;
@@ -156,6 +176,7 @@ export default class Board{
         y:rect.y + scrollingElement.scrollTop
       }
     });
+    this.onChange = options.onChange;
     if(this.stack){
       this.stackObj = new Stack();
       this.stackObj.restoreState = (state:StackType)=>{
@@ -185,10 +206,15 @@ export default class Board{
     canvas.width = this.width;
     canvas.height = this.height;
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
-    this.gridPattern = this.generateGridPattern();
+    this.ctx.imageSmoothingQuality = "high";
+    this.bgPattern = this.generateGridPattern();
     this.loadEvent();
     this.draw();
   }
+  // setEnableEagleEyeMode(enable:boolean){
+  //   this.enableEagleEyeMode = enable;
+  //   this.draw();
+  // }
   setVoice(voice = 1){
     this.voice = voice;
     this.d = voice;
@@ -241,33 +267,44 @@ export default class Board{
       pointGroup:this.pointsGroup
     });
   }
+  bindOnChange(){
+    window.requestIdleCallback(()=>{
+      if(this.onChange){
+        const canvas = this.exportAsCanvas();
+        this.onChange(canvas);
+      }
+    })
+  }
+  drawPureCanvas(ctx:CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D){
+    this.pointsGroup?.forEach(({corners,fillStyle})=>{
+      corners.forEach(([[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]])=>{
+        const x11 = wx11 - this.minX;
+        const y11 = wy11 - this.minY;
+        const x12 = wx12 - this.minX;
+        const y12 = wy12 - this.minY;
+        const x21 = wx21 - this.minX;
+        const y21 = wy21 - this.minY;
+        const x22 = wx22 - this.minX;
+        const y22 = wy22 - this.minY;
+        ctx.save();
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(x11,y11);
+        ctx.lineTo(x12,y12);
+        ctx.lineTo(x22,y22);
+        ctx.lineTo(x21,y21);
+        ctx.fill();
+        ctx.restore();
+      })
+    })
+  }
   exportAsCanvas(){
     const canvas = document.createElement('canvas') as HTMLCanvasElement;
     if(this.minX!==undefined){
       canvas.width = this.maxX - this.minX;
       canvas.height = this.maxY - this.minY;
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-      this.pointsGroup?.forEach(({corners,fillStyle})=>{
-        corners.forEach(([[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]])=>{
-          const x11 = wx11 - this.minX;
-          const y11 = wy11 - this.minY;
-          const x12 = wx12 - this.minX;
-          const y12 = wy12 - this.minY;
-          const x21 = wx21 - this.minX;
-          const y21 = wy21 - this.minY;
-          const x22 = wx22 - this.minX;
-          const y22 = wy22 - this.minY;
-          ctx.save();
-          ctx.fillStyle = fillStyle;
-          ctx.beginPath();
-          ctx.moveTo(x11,y11);
-          ctx.lineTo(x12,y12);
-          ctx.lineTo(x22,y22);
-          ctx.lineTo(x21,y21);
-          ctx.fill();
-          ctx.restore();
-        })
-      })
+      this.drawPureCanvas(ctx);
     }else{
       canvas.width = 0;
       canvas.height = 0;
@@ -293,6 +330,8 @@ export default class Board{
     this.drawEraser();
     this.loadRule();
     this.loadBorder();
+    // this.drawEagleEye();
+    this.bindOnChange();
   }
   private loadEvent(){
     let hasWrited = false;
@@ -573,15 +612,19 @@ export default class Board{
     const distance = ((y2-y1)**2 + (x2-x1)**2)**0.5;
     const originD = (writeEndTime - writeStartTime)/distance * this.voice;
     if(!isNaN(originD)){
-      if(originD>this.d * 1.2){
-        this.d *= 1.2 
-      }else if(originD<this.d/1.2){
-        this.d /= 1.2;
-      }else{
-        this.d = originD;
-      }
-      if(this.d>this.maxD){
-        this.d = this.maxD;
+      if(this.writeModel === WriteModel.WRITE){
+        if(originD>this.d * 1.2){
+          this.d *= 1.2 
+        }else if(originD<this.d/1.2){
+          this.d /= 1.2;
+        }else{
+          this.d = originD;
+        }
+        if(this.d>this.maxD){
+          this.d = this.maxD;
+        }
+      }else if (this.writeModel === WriteModel.DRAW){ 
+        this.d = this.voice;
       }
       const points = this.getCornersCoordinate(x1,y1,x2,y2,this.d);
       const hasNaN = points.flat().some(xy=>{
@@ -651,7 +694,7 @@ export default class Board{
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(coordX,coordY);
-      ctx.fillStyle = this.gridPattern;
+      ctx.fillStyle = this.bgPattern;
       ctx.fillRect(0,0, this.width + this.gridGap * 2, this.height + this.gridGap * 2);
       ctx.restore();
     }
@@ -659,6 +702,41 @@ export default class Board{
   private negativeRemainder(a:number, b:number) {
     return ((a % b) + b) % b;
   }
+  // private drawEagleEye(){
+  //   if(!this.enableEagleEyeMode){
+  //     return;
+  //   }
+  //   const ctx = this.ctx;
+  //   const width = this.width;
+  //   const height = this.height;
+  //   const maxW = width/3;
+  //   const maxH = height/3;
+  //   const dx = width - maxW;
+  //   const globalAlpha = 1;
+  //   ctx.save();
+  //   ctx.globalAlpha = globalAlpha;
+  //   ctx.fillStyle = 'rgba(0,0,0,.3)';
+  //   ctx.strokeStyle = 'rgba(0,0,0,1)';
+  //   ctx.fillRect(dx,0,maxW,maxH);
+  //   ctx.strokeRect(dx,0,maxW,maxH);
+  //   ctx.restore();
+  //   if(this.minX!==undefined){
+  //     self.requestIdleCallback(()=>{
+  //       ctx.save();
+  //       ctx.globalAlpha = globalAlpha;
+  //       const w = this.maxX - this.minX;
+  //       const h = this.maxY - this.minY;
+  //       const rate = Math.min(maxW/w,maxH/h);
+  //       this.eagleEyeOffscreen = new OffscreenCanvas(w, h);
+  //       this.eagleEyeOffscreenCtx = this.eagleEyeOffscreen.getContext('2d')!;
+  //       this.drawPureCanvas(this.eagleEyeOffscreenCtx);
+  //       ctx.translate(dx,0);
+  //       ctx.scale(rate,rate);
+  //       this.ctx.drawImage(this.eagleEyeOffscreen,0,0);
+  //       ctx.restore();
+  //     })
+  //   }
+  // }
   private loadBorder(){
     if(this.showBorder){
       const ctx = this.ctx;
