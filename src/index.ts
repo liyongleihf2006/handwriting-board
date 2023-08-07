@@ -300,6 +300,7 @@ export default class Board{
   }
   exportAsCanvas(){
     const canvas = document.createElement('canvas') as HTMLCanvasElement;
+    this.calcSize();
     if(this.minX!==undefined){
       canvas.width = this.maxX - this.minX;
       canvas.height = this.maxY - this.minY;
@@ -323,13 +324,17 @@ export default class Board{
   unclean(){
     this.cleanState = false;
   }
+  private singleDraw(pointsGroup:PointsGroup){
+    this.doWriting(pointsGroup);
+    this.bindOnChange();
+  }
   private draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
     this.loadGrid();
-    this.doWriting();
-    this.drawEraser();
     this.loadRule();
     this.loadBorder();
+    this.doWriting(this.pointsGroup);
+    this.drawEraser();
     // this.drawEagleEye();
     this.bindOnChange();
   }
@@ -406,6 +411,7 @@ export default class Board{
         this.cleanX = writeEndX;
         this.cleanY = writeEndY;
         this.doClean(writeEndX,writeEndY);
+        this.draw();
       }else{
         if(needPushPoints){
           this.pointsGroup.push({
@@ -414,9 +420,14 @@ export default class Board{
           });
           needPushPoints = false;
         }
-        this.pushPoints(writeStartX,writeStartY,writeEndX,writeEndY,writeStartTime,writeEndTime);
+        const points = this.pushPoints(writeStartX,writeStartY,writeEndX,writeEndY,writeStartTime,writeEndTime);
+        if(points){
+          this.singleDraw([{
+            corners:[points],
+            fillStyle:this.color
+          }])
+        }
       }
-      this.draw();
     }
     const handleMouseMove = (event:MouseEvent) => {
       if(isSingleTouch){
@@ -638,11 +649,12 @@ export default class Board{
           points[1] = lastPoints[3];
         }
         corners.push(points);
+        return points;
       }
     }
   }
-  private doWriting(){
-    this.pointsGroup.forEach(({corners,fillStyle},idx)=>{
+  private doWriting(pointsGroup:PointsGroup){
+    pointsGroup.forEach(({corners,fillStyle},idx)=>{
       this.ctx.save();
       this.ctx.fillStyle = fillStyle;
       this.ctx.beginPath();
@@ -659,6 +671,14 @@ export default class Board{
         this.ctx.lineTo(x12,y12);
         this.ctx.lineTo(x22,y22);
         this.ctx.lineTo(x21,y21);
+      })
+      this.ctx.fill();
+      this.ctx.restore();
+    })
+  }
+  private calcSize(){
+    this.pointsGroup.forEach(({corners},idx)=>{
+      corners.forEach(([[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]],i)=>{
         if(!idx && !i){
           this.minX = Math.min(wx11,wx12,wx21,wx22);
           this.minY = Math.min(wy11,wy12,wy21,wy22);
@@ -671,8 +691,6 @@ export default class Board{
           this.maxY = Math.max(this.maxY,wy11,wy12,wy21,wy22);
         }
       })
-      this.ctx.fill();
-      this.ctx.restore();
     })
   }
   private generateGridPattern(){
