@@ -1,6 +1,7 @@
 import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange} from './type';
 import {Stack} from './stack';
 import {WriteModel} from './enum';
+import {debounce} from './utils'
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
@@ -125,6 +126,7 @@ export default class Board{
   private maxX!:number;
   private maxY!:number;
   private moveT = false;
+  private debounceBindOnChange:Function;
 
   // enableEagleEyeMode:boolean;
   writeModel:WriteModel;
@@ -177,6 +179,7 @@ export default class Board{
       }
     });
     this.onChange = options.onChange;
+    this.debounceBindOnChange = debounce(this.triggerOnChange,500);
     if(this.stack){
       this.stackObj = new Stack();
       this.stackObj.restoreState = (state:StackType)=>{
@@ -267,7 +270,7 @@ export default class Board{
       pointGroup:this.pointsGroup
     });
   }
-  bindOnChange(){
+  triggerOnChange(){
     window.requestIdleCallback(()=>{
       if(this.onChange){
         const canvas = this.exportAsCanvas();
@@ -326,7 +329,7 @@ export default class Board{
   }
   private singleDraw(pointsGroup:PointsGroup){
     this.doWriting(pointsGroup);
-    this.bindOnChange();
+    this.debounceBindOnChange();
   }
   private draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
@@ -336,7 +339,7 @@ export default class Board{
     this.doWriting(this.pointsGroup);
     this.drawEraser();
     // this.drawEagleEye();
-    this.bindOnChange();
+    this.debounceBindOnChange();
   }
   private loadEvent(){
     let hasWrited = false;
