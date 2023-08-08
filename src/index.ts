@@ -342,6 +342,7 @@ export default class Board{
     this.debounceBindOnChange();
   }
   private loadEvent(){
+    let hasMoved = false;
     let hasWrited = false;
     let isDoubleTouch = false;
     let dragStartX = 0;
@@ -360,6 +361,7 @@ export default class Board{
     let writeEndY = 0;
     let writeEndTime = 0;
     const handleWriteStart = (coords:Coords) => {
+      hasMoved = false;
       hasWrited = false;
       isSingleTouch = true;
       needPushPoints = true;
@@ -396,6 +398,7 @@ export default class Board{
       }
     }
     const handleMouseStart = (event:MouseEvent) => {
+      event.preventDefault();
       if(!this.writeLocked){
         const {pageX,pageY} = event;
         const coords = getPageCoords([{pageX,pageY}]);
@@ -403,6 +406,7 @@ export default class Board{
       }
     }
     const handleWriteMove = (coords:Coords) => {
+      hasMoved = true;
       hasWrited = true;
       writeStartX = writeEndX;
       writeStartY = writeEndY;
@@ -483,7 +487,7 @@ export default class Board{
       }
       _scrollDecay(speedX,speedY);
     }
-    const handleWriteEnd = () => {
+    const handleWriteEnd = (coords:Coords) => {
       if (isDoubleTouch) {
         if(this.dragLocked){return}
         const deltaX = dragEndX - dragStartX;
@@ -493,6 +497,11 @@ export default class Board{
         const speedY = deltaY/deltaTime ;
         scrollDecay(speedX,speedY);
       } else if (isSingleTouch){
+        if(!hasMoved){
+          if(writeEndX!==coords.pageX || writeEndY!==coords.pageY){
+            handleWriteMove(coords);
+          }
+        }
         if(this.stack && hasWrited){
           this.stackObj.saveState({
             worldOffsetX:this.worldOffsetX,
@@ -508,16 +517,25 @@ export default class Board{
       isDoubleTouch = false;
       isSingleTouch = false;
     }
-    
+    const handleTouchEnd = (event:TouchEvent) => {
+      const touches = event.changedTouches;
+      const coords = getPageCoords(touches);
+      handleWriteEnd(coords);
+    }
+    const handleMouseEnd = (event:MouseEvent) => {
+      const {pageX,pageY} = event;
+      const coords = getPageCoords([{pageX,pageY}]);
+      handleWriteEnd(coords);
+    }
     const canvas = this.canvas;
     if(isTouchDevice()){
       canvas.addEventListener("touchstart", handleTouchStart, { passive: true });
       canvas.addEventListener("touchmove", handleTouchMove, { passive: true });
-      canvas.addEventListener("touchend", handleWriteEnd, { passive: true });
+      canvas.addEventListener("touchend", handleTouchEnd, { passive: true });
     }else{
-      canvas.addEventListener("mousedown", handleMouseStart, { passive: true });
+      canvas.addEventListener("mousedown", handleMouseStart);
       self.addEventListener("mousemove", handleMouseMove, { passive: true });
-      self.addEventListener("mouseup", handleWriteEnd, { passive: true });
+      self.addEventListener("mouseup", handleMouseEnd, { passive: true });
     }
     const getPageCoords = (touches:TouchList|Coords[])=>{
       const {x:containerX,y:containerY} = this.containerOffset();
