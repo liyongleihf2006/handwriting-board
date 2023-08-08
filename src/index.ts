@@ -1,11 +1,15 @@
 import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange} from './type';
 import {Stack} from './stack';
-import {WriteModel} from './enum';
+import {WriteModel,BGPattern} from './enum';
 import {debounce} from './utils'
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
 }
+/**
+ * 背景格式
+ */
+const defaultBGPattern = BGPattern.GRID;
 /**
  * 是否启用全览模式
  */
@@ -15,17 +19,37 @@ function isTouchDevice() {
  */
 const defaultWriteModel = WriteModel.WRITE;
 /**
- * 是否使用棋盘
+ * 是否使用背景
  */
-const defaultGrid = true;
+const defaultEnableBG = true;
 /**
  * 棋盘格子的间距
  */
 const defaultGridGap = 100;
 /**
+ * 田字格的尺寸
+ */
+const defaultGridPaperGap = 50;
+/**
+ * 四线格纵向空白
+ */
+const defaultQuadrillePaperVerticalMargin = 20;
+/**
+ * 四线格线的间距
+ */
+const defaultQuadrillePaperGap = 15;
+/**
  * 棋盘格子的填充色
  */
 const defaultGridFillStyle = 'rgb(250,250,250)';
+/**
+ * 田字格边框颜色
+ */
+const defaultGridPaperStrokeStyle = 'green';
+/**
+ * 四线格四条线的颜色
+ */
+const defaultQuadrillePaperStrokeStyles = ['rgba(0,0,255,.5)','rgba(255,0,0,.5)','rgba(0,0,255,1)','rgba(0,0,255,.5)'];
 /**
  * 是否使用标尺
  */
@@ -84,11 +108,17 @@ const defaultBorderStyle = '#333';
 const defaultBorderWidth = 2;
 
 const defaultOptions = {
+  bgPattern:defaultBGPattern,
   // enableEagleEyeMode:defaultEnableEagleEyeMode,
   writeModel:defaultWriteModel,
-  grid:defaultGrid,
+  enableBG:defaultEnableBG,
   gridGap:defaultGridGap,
+  gridPaperGap:defaultGridPaperGap,
+  quadrillePaperVerticalMargin:defaultQuadrillePaperVerticalMargin,
+  quadrillePaperGap:defaultQuadrillePaperGap,
   gridFillStyle:defaultGridFillStyle,
+  gridPaperStrokeStyle:defaultGridPaperStrokeStyle,
+  quadrillePaperStrokeStyles:defaultQuadrillePaperStrokeStyles,
   rule:defaultRule,
   ruleGap:defaultRuleGap,
   ruleUnitLen:defaultRuleUnitLen,
@@ -127,13 +157,20 @@ export default class Board{
   private maxY!:number;
   private moveT = false;
   private debounceBindOnChange:Function;
-
+  private gridPattern:CanvasPattern;
+  private gridPaperPattern:CanvasPattern;
+  private quadrillePaperPattern:CanvasPattern;
+  bgPattern:BGPattern;
   // enableEagleEyeMode:boolean;
   writeModel:WriteModel;
-  grid:boolean;
+  enableBG:boolean;
   gridGap:number;
-  bgPattern:CanvasPattern;
+  gridPaperGap:number;
+  quadrillePaperVerticalMargin:number;
+  quadrillePaperGap:number;
   gridFillStyle:string;
+  gridPaperStrokeStyle:string;
+  quadrillePaperStrokeStyles:string[];
   rule:boolean;
   ruleGap:number;
   ruleUnitLen:number;
@@ -151,11 +188,17 @@ export default class Board{
   containerOffset:ContainerOffset;
   onChange:OnChange|undefined;
   constructor(public canvas:HTMLCanvasElement,options:Options = defaultOptions){
+    this.bgPattern = options.bgPattern ?? defaultBGPattern;
     // this.enableEagleEyeMode = options.enableEagleEyeMode ?? defaultEnableEagleEyeMode;
     this.writeModel = options.writeModel ?? defaultWriteModel;
-    this.grid = options.grid ?? defaultGrid;
+    this.enableBG = options.enableBG ?? defaultEnableBG;
     this.gridGap = options.gridGap ?? defaultGridGap;
+    this.gridPaperGap = options.gridPaperGap ?? defaultGridPaperGap;
+    this.quadrillePaperVerticalMargin = options.quadrillePaperVerticalMargin ?? defaultQuadrillePaperVerticalMargin;
+    this.quadrillePaperGap = options.quadrillePaperGap ?? defaultQuadrillePaperGap;
     this.gridFillStyle = options.gridFillStyle ?? defaultGridFillStyle;
+    this.gridPaperStrokeStyle = options.gridPaperStrokeStyle ?? defaultGridPaperStrokeStyle;
+    this.quadrillePaperStrokeStyles = options.quadrillePaperStrokeStyles ?? defaultQuadrillePaperStrokeStyles;
     this.rule = options.rule ?? defaultRule;
     this.ruleGap = options.ruleGap ?? defaultRuleGap;
     this.ruleUnitLen = options.ruleUnitLen ?? defaultRuleUnitLen;
@@ -210,7 +253,9 @@ export default class Board{
     canvas.height = this.height;
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
     this.ctx.imageSmoothingQuality = "high";
-    this.bgPattern = this.generateGridPattern();
+    this.gridPattern = this.generateGridPattern();
+    this.gridPaperPattern = this.generateGridPaperPattern();
+    this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
     this.loadEvent();
     this.draw();
   }
@@ -223,12 +268,12 @@ export default class Board{
     this.d = voice;
     this.maxD = voice * 2;
   }
-  showGrid(){
-    this.grid = true;
+  showBG(){
+    this.enableBG = true;
     this.draw();
   }
-  hideGrid(){
-    this.grid = false;
+  hideBG(){
+    this.enableBG = false;
     this.draw();
   }
   showRule(){
@@ -331,7 +376,7 @@ export default class Board{
     this.doWriting(pointsGroup);
     this.debounceBindOnChange();
   }
-  private draw(){
+  draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
     this.loadGrid();
     this.loadRule();
@@ -724,8 +769,46 @@ export default class Board{
     const pattern = ctx.createPattern(bgOffscreen, "repeat") as CanvasPattern;
     return pattern;
   }
+  private generateGridPaperPattern(){
+    const gap = this.gridPaperGap;
+    const bgOffscreen = new OffscreenCanvas(gap, gap);
+    const ctx = bgOffscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
+    ctx.strokeStyle = this.gridPaperStrokeStyle;
+    ctx.strokeRect(0, 0, gap, gap);
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(gap/2,0);
+    ctx.lineTo(gap/2,gap);
+    ctx.moveTo(0,gap/2);
+    ctx.lineTo(gap,gap/2);
+    ctx.stroke();
+    const pattern = ctx.createPattern(bgOffscreen, "repeat") as CanvasPattern;
+    return pattern;
+  }
+  private generateQuadrillePaperPattern(){
+  //   quadrillePaperVerticalMargin:number;
+  // quadrillePaperGap:number;
+  // gridFillStyle:string;
+  // gridPaperStrokeStyle:string;
+  // quadrillePaperStrokeStyles:string[];
+    const quadrillePaperVerticalMargin = this.quadrillePaperVerticalMargin;
+    const gap = this.quadrillePaperGap;
+    const quadrillePaperStrokeStyles = this.quadrillePaperStrokeStyles;
+    const height = quadrillePaperVerticalMargin * 2 + gap * 3;
+    const bgOffscreen = new OffscreenCanvas(this.width, height);
+    const ctx = bgOffscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
+    for(let i = 0;i<quadrillePaperStrokeStyles.length;i++){
+      ctx.strokeStyle = quadrillePaperStrokeStyles[i];
+      ctx.beginPath();
+      ctx.moveTo(0,quadrillePaperVerticalMargin + gap * i);
+      ctx.lineTo(this.width,quadrillePaperVerticalMargin + gap * i);
+      ctx.stroke();
+    }
+    const pattern = ctx.createPattern(bgOffscreen, "repeat") as CanvasPattern;
+    return pattern;
+  }
   private loadGrid(){
-    if(this.grid){
+    if(this.enableBG){
       const offsetX = this.negativeRemainder(this.worldOffsetX,this.gridGap * 2);
       const offsetY = this.negativeRemainder(this.worldOffsetY,this.gridGap * 2);
       const coordX = -offsetX;
@@ -733,7 +816,13 @@ export default class Board{
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(coordX,coordY);
-      ctx.fillStyle = this.bgPattern;
+      if(this.bgPattern === BGPattern.GRID){
+        ctx.fillStyle = this.gridPattern;
+      }else if(this.bgPattern === BGPattern.GRID_PAPER){
+        ctx.fillStyle = this.gridPaperPattern;
+      }else if(this.bgPattern === BGPattern.QUADRILLE_PAPER){
+        ctx.fillStyle = this.quadrillePaperPattern;
+      }
       ctx.fillRect(0,0, this.width + this.gridGap * 2, this.height + this.gridGap * 2);
       ctx.restore();
     }

@@ -1,11 +1,17 @@
-import { WriteModel } from './enum';
+import { BGPattern, WriteModel } from './enum';
 export type OnChange = (canvas:HTMLCanvasElement)=>{};
 export type Options = {
+  bgPattern?:BGPattern,
   // enableEagleEyeMode?:boolean,
   writeModel?:WriteModel,
-  grid?:boolean,
+  enableBG?:boolean,
   gridGap?:number,
+  gridPaperGap?:number,
+  quadrillePaperVerticalMargin?:number,
+  quadrillePaperGap?:number,
   gridFillStyle?:string,
+  gridPaperStrokeStyle?:string,
+  quadrillePaperStrokeStyles?:string[],
   rule?:boolean,
   ruleGap?:number,
   ruleUnitLen?:number,
