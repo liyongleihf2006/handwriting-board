@@ -543,9 +543,7 @@ export default class Board{
         scrollDecay(speedX,speedY);
       } else if (isSingleTouch){
         if(!hasMoved){
-          if(writeEndX!==coords.pageX || writeEndY!==coords.pageY){
-            handleWriteMove(coords);
-          }
+          handleWriteMove(coords);
         }
         if(this.stack && hasWrited){
           this.stackObj.saveState({
@@ -714,6 +712,27 @@ export default class Board{
           points[0] = lastPoints[2];
           points[1] = lastPoints[3];
         }
+        corners.push(points);
+        return points;
+      }else if(!distance){
+        const corners  = this.pointsGroup[this.pointsGroup.length-1].corners;
+        type Points = [[number, number], [number, number], [number, number], [number, number]];
+        let d = this.voice;
+        if(this.writeModel === WriteModel.WRITE){
+          let rate = (writeEndTime - writeStartTime)/250;
+          if(rate>2){
+            rate = 2;
+          }else if(rate<1){
+            rate = 1;
+          }
+          d = this.voice * rate;
+        }
+        const points: Points= [
+          [x1 - d,y1 - d],
+          [x1 - d,y1 + d],
+          [x1 + d,y1 - d],
+          [x1 + d,y1 + d]
+        ];
         corners.push(points);
         return points;
       }
