@@ -1,11 +1,19 @@
-import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange} from './type';
+import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange} from './type';
 import {Stack} from './stack';
-import {WriteModel,BGPattern} from './enum';
+import {WriteModel,BGPattern,ScrollDirection} from './enum';
 import {debounce} from './utils'
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
 }
+/**
+ * 滚动范围
+ */
+const defaultScrollRange:ScrollRange = [[null,null],[null,null]];
+/**
+ * 滚动方向
+ */
+const defaultScrollDirection = ScrollDirection.ALL;
 /**
  * 背景格式
  */
@@ -108,6 +116,8 @@ const defaultBorderStyle = '#333';
 const defaultBorderWidth = 2;
 
 const defaultOptions = {
+  scrollRange:defaultScrollRange,
+  scrollDirection:defaultScrollDirection,
   bgPattern:defaultBGPattern,
   // enableEagleEyeMode:defaultEnableEagleEyeMode,
   writeModel:defaultWriteModel,
@@ -160,6 +170,8 @@ export default class Board{
   private gridPattern:CanvasPattern;
   private gridPaperPattern:CanvasPattern;
   private quadrillePaperPattern:CanvasPattern;
+  scrollRange:ScrollRange;
+  scrollDirection:ScrollDirection;
   bgPattern:BGPattern;
   // enableEagleEyeMode:boolean;
   writeModel:WriteModel;
@@ -188,6 +200,8 @@ export default class Board{
   containerOffset:ContainerOffset;
   onChange:OnChange|undefined;
   constructor(public canvas:HTMLCanvasElement,options:Options = defaultOptions){
+    this.scrollRange = options.scrollRange ?? defaultScrollRange;
+    this.scrollDirection = options.scrollDirection ?? defaultScrollDirection;
     this.bgPattern = options.bgPattern ?? defaultBGPattern;
     // this.enableEagleEyeMode = options.enableEagleEyeMode ?? defaultEnableEagleEyeMode;
     this.writeModel = options.writeModel ?? defaultWriteModel;
@@ -284,9 +298,31 @@ export default class Board{
     this.rule = false;
     this.draw();
   }
+  private adjustOffset(){
+    const [[minX,maxX],[minY,maxY]] = this.scrollRange;
+    if(typeof minX === 'number'){
+      this.worldOffsetX = Math.max(minX,this.worldOffsetX);
+    }
+    if(typeof maxX === 'number'){
+      this.worldOffsetX = Math.min(maxX,this.worldOffsetX);
+    }
+    if(typeof minY === 'number'){
+      this.worldOffsetY = Math.max(minY,this.worldOffsetY);
+    }
+    if(typeof maxY === 'number'){
+      this.worldOffsetY = Math.min(maxY,this.worldOffsetY);
+    }
+  }
   private doMove(preOffsetX:number,preOffsetY:number,i=0){
-    this.worldOffsetX+=preOffsetX;
-    this.worldOffsetY+=preOffsetY;
+    if(this.scrollDirection === ScrollDirection.ALL){
+      this.worldOffsetX+=preOffsetX;
+      this.worldOffsetY+=preOffsetY;
+    }else if(this.scrollDirection === ScrollDirection.X){
+      this.worldOffsetX+=preOffsetX;
+    }else if(this.scrollDirection === ScrollDirection.Y){
+      this.worldOffsetY+=preOffsetY;
+    }
+    this.adjustOffset();
     this.draw();
     self.requestAnimationFrame(()=>{
       if(this.moveT && i<this.moveCountTotal){
@@ -499,10 +535,19 @@ export default class Board{
         dragEndX = coords.pageX;
         dragEndY = coords.pageY;
         dragEndTime = performance.now();
-        const deltaX = dragEndX - dragStartX;
-        const deltaY = dragEndY - dragStartY;
+        let deltaX = 0;
+        let deltaY = 0;
+        if(this.scrollDirection === ScrollDirection.ALL){
+          deltaX = dragEndX - dragStartX;
+          deltaY = dragEndY - dragStartY;
+        }else if(this.scrollDirection === ScrollDirection.X){
+          deltaX = dragEndX - dragStartX;
+        }else if(this.scrollDirection === ScrollDirection.Y){
+          deltaY = dragEndY - dragStartY;
+        }
         this.worldOffsetX -= deltaX;
         this.worldOffsetY -= deltaY;
+        this.adjustOffset();
         this.draw();
       } else if(isSingleTouch){
         const coords = getPageCoords(touches);
@@ -517,6 +562,7 @@ export default class Board{
         if(Math.abs(speedX)>minSpeed||Math.abs(speedY)>minSpeed){
           this.worldOffsetX -= speedX;
           this.worldOffsetY -= speedY;
+          this.adjustOffset();
           this.draw();
           const ratio = Math.max((99 - 0.01 * t++),50)/100;
           speedX = ratio * speedX
@@ -538,8 +584,16 @@ export default class Board{
         const deltaX = dragEndX - dragStartX;
         const deltaY = dragEndY - dragStartY;
         const deltaTime = dragEndTime - dragStartTime;
-        const speedX = deltaX/deltaTime ;
-        const speedY = deltaY/deltaTime ;
+        let speedX = 0 ;
+        let speedY = 0 ;
+        if(this.scrollDirection === ScrollDirection.ALL){
+          speedX = deltaX/deltaTime ;
+          speedY = deltaY/deltaTime ;
+        }else if(this.scrollDirection === ScrollDirection.X){
+          speedX = deltaX/deltaTime ;
+        }else if(this.scrollDirection === ScrollDirection.Y){
+          speedY = deltaY/deltaTime ;
+        }
         scrollDecay(speedX,speedY);
       } else if (isSingleTouch){
         if(!hasMoved){

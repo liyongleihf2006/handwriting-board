@@ -7,3 +7,8 @@ export enum BGPattern{
   GRID_PAPER='gridPaper',
   QUADRILLE_PAPER='quadrillePaper'
 }
+export enum ScrollDirection{
+  ALL = 'all',
+  X = 'x',
+  Y = 'y'
+}

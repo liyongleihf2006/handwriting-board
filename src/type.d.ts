@@ -1,6 +1,9 @@
-import { BGPattern, WriteModel } from './enum';
+import { BGPattern, WriteModel,ScrollDirection } from './enum';
+export type ScrollRange = [[number|null,number|null],[number|null,number|null]];
 export type OnChange = (canvas:HTMLCanvasElement)=>{};
 export type Options = {
+  scrollRange?:ScrollRange,
+  scrollDirection?:ScrollDirection,
   bgPattern?:BGPattern,
   // enableEagleEyeMode?:boolean,
   writeModel?:WriteModel,

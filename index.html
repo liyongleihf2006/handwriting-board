@@ -62,6 +62,23 @@
   </div>
   <div class="operate">
     <label>
+      滚动范围
+      <select id="scrollRange">
+        <option value="[[null,null],[null,null]]">不限制</option>
+        <option value="[[0,null],[null,null]]">x正向</option>
+        <option value="[[null,null],[0,null]]">y正向</option>
+        <option value="[[0,null],[0,null]]">xy正向</option>
+      </select>
+    </label>
+    <label>
+      滚动方向
+      <select id="scrollDirection">
+        <option value="all">xy方向</option>
+        <option value="x">x方向</option>
+        <option value="y">y方向</option>
+      </select>
+    </label>
+    <label>
       启用全览
       <input type="checkbox" id="changeEnableEagleEyeMode">
     </label>
@@ -121,6 +138,8 @@
     const containerRef = document.querySelector('#containerRef');
     const imgWrapRef = document.querySelector('#imgWrapRef');
     const imgRef = document.querySelector('#imgRef');
+    const scrollRange = document.querySelector('#scrollRange');
+    const scrollDirection = document.querySelector('#scrollDirection');
     const changeEnableEagleEyeMode = document.querySelector('#changeEnableEagleEyeMode');
     const changeWriteModel = document.querySelector('#changeWriteModel');
     const changeColor = document.querySelector('#changeColor');
@@ -145,6 +164,8 @@
     const redo = document.querySelector('#redo');
     const exportAsCanvas = document.querySelector('#exportAsCanvas');
     const handwritingBoard = new Board(containerRef, {
+      scrollRange: [[null, null], [null, null]],
+      scrollDirection: 'all',
       enableBG: true,
       gridGap: 100,
       gridPaperGap: 50,
@@ -167,6 +188,12 @@
       borderStyle: '#333',
       borderWidth: 2
     });
+    scrollRange.addEventListener('change', (event) => {
+      handwritingBoard.scrollRange = JSON.parse(event.target.value);
+    })
+    scrollDirection.addEventListener('change', (event) => {
+      handwritingBoard.scrollDirection = event.target.value;
+    })
     changeEnableEagleEyeMode.addEventListener('change', (event) => {
       const checked = event.target.checked;
       imgWrapRef.classList.toggle('container-img-wrap-show', checked);
