@@ -131,6 +131,7 @@
     <button id="undo">后退</button>
     <button id="redo">前进</button>
     <button id="exportAsCanvas">导出为画布</button>
+    <button id="exportAsPaperCanvas">导出为整页画布</button>
   </div>
   <script src="./dist/index.umd.min.js"></script>
   <script type="module">
@@ -163,14 +164,15 @@
     const undo = document.querySelector('#undo');
     const redo = document.querySelector('#redo');
     const exportAsCanvas = document.querySelector('#exportAsCanvas');
+    const exportAsPaperCanvas = document.querySelector('#exportAsPaperCanvas');
     const handwritingBoard = new Board(containerRef, {
       scrollRange: [[null, null], [null, null]],
       scrollDirection: 'all',
       enableBG: true,
       gridGap: 100,
-      gridPaperGap: 50,
-      quadrillePaperVerticalMargin: 20,
-      quadrillePaperGap: 15,
+      gridPaperGap: 100,
+      quadrillePaperVerticalMargin: 40,
+      quadrillePaperGap: 30,
       gridFillStyle: 'rgb(250,250,250)',
       quadrillePaperStrokeStyles: ['rgba(0,0,255,.5)', 'rgba(255,0,0,.5)', 'rgba(0,0,255,1)', 'rgba(0,0,255,.5)'],
       rule: true,
@@ -282,6 +284,13 @@
       img.src = dataURL;
       img.style.border = '1px solid';
       img.style.background = 'rgba(0,0,0,0.1)';
+      document.body.append(img);
+    })
+    exportAsPaperCanvas.addEventListener('click', () => {
+      const canvas = handwritingBoard.exportAsPaperCanvas();
+      const dataURL = canvas.toDataURL()
+      const img = document.createElement('img');
+      img.src = dataURL;
       document.body.append(img);
     })
   </script>

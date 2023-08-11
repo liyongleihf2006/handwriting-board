@@ -2,6 +2,7 @@ import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRa
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
 import {debounce} from './utils'
+import Ruler from './utils/ruler';
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
@@ -37,15 +38,15 @@ const defaultGridGap = 100;
 /**
  * 田字格的尺寸
  */
-const defaultGridPaperGap = 50;
+const defaultGridPaperGap = 100;
 /**
  * 四线格纵向空白
  */
-const defaultQuadrillePaperVerticalMargin = 20;
+const defaultQuadrillePaperVerticalMargin = 40;
 /**
  * 四线格线的间距
  */
-const defaultQuadrillePaperGap = 15;
+const defaultQuadrillePaperGap = 30;
 /**
  * 棋盘格子的填充色
  */
@@ -170,6 +171,7 @@ export default class Board{
   private gridPattern:CanvasPattern;
   private gridPaperPattern:CanvasPattern;
   private quadrillePaperPattern:CanvasPattern;
+  private ruler:Ruler;
   scrollRange:ScrollRange;
   scrollDirection:ScrollDirection;
   bgPattern:BGPattern;
@@ -270,6 +272,7 @@ export default class Board{
     this.gridPattern = this.generateGridPattern();
     this.gridPaperPattern = this.generateGridPaperPattern();
     this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
+    this.ruler = new Ruler(this.ctx);
     this.loadEvent();
     this.draw();
   }
@@ -359,17 +362,27 @@ export default class Board{
       }
     })
   }
-  drawPureCanvas(ctx:CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D){
+  drawPureCanvas(ctx:CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D,crop = true){
     this.pointsGroup?.forEach(({corners,fillStyle})=>{
       corners.forEach(([[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]])=>{
-        const x11 = wx11 - this.minX;
-        const y11 = wy11 - this.minY;
-        const x12 = wx12 - this.minX;
-        const y12 = wy12 - this.minY;
-        const x21 = wx21 - this.minX;
-        const y21 = wy21 - this.minY;
-        const x22 = wx22 - this.minX;
-        const y22 = wy22 - this.minY;
+        let x11 = wx11;
+        let y11 = wy11;
+        let x12 = wx12;
+        let y12 = wy12;
+        let x21 = wx21;
+        let y21 = wy21;
+        let x22 = wx22;
+        let y22 = wy22;
+        if(crop){
+          x11 = wx11 - this.minX;
+          y11 = wy11 - this.minY;
+          x12 = wx12 - this.minX;
+          y12 = wy12 - this.minY;
+          x21 = wx21 - this.minX;
+          y21 = wy21 - this.minY;
+          x22 = wx22 - this.minX;
+          y22 = wy22 - this.minY;
+        }
         ctx.save();
         ctx.fillStyle = fillStyle;
         ctx.beginPath();
@@ -396,6 +409,21 @@ export default class Board{
     }
     return canvas;
   }
+  exportAsPaperCanvas(){
+    const canvas = document.createElement('canvas') as HTMLCanvasElement;
+    this.calcSize();
+    canvas.width = this.width;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    if(this.minX!==undefined){
+      canvas.height = Math.ceil(this.maxY/this.height) * this.height;
+      this.loadGrid(ctx,false);
+      this.drawPureCanvas(ctx,false);
+    }else{
+      canvas.height = this.height;
+      this.loadGrid(ctx,false);
+    }
+    return canvas;
+  }
   undo(){
     this.stackObj.undo();
   }
@@ -414,10 +442,11 @@ export default class Board{
   }
   draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
-    this.loadGrid();
+    this.loadGrid(this.ctx);
     this.loadRule();
     this.loadBorder();
     this.doWriting(this.pointsGroup);
+    this.ruler.draw();
     this.drawEraser();
     // this.drawEagleEye();
     this.debounceBindOnChange();
@@ -880,13 +909,16 @@ export default class Board{
     const pattern = ctx.createPattern(bgOffscreen, "repeat") as CanvasPattern;
     return pattern;
   }
-  private loadGrid(){
+  private loadGrid(ctx:CanvasRenderingContext2D,offset=true){
     if(this.enableBG){
-      const offsetX = this.negativeRemainder(this.worldOffsetX,this.gridGap * 2);
-      const offsetY = this.negativeRemainder(this.worldOffsetY,this.gridGap * 2);
-      const coordX = -offsetX;
-      const coordY = -offsetY;
-      const ctx = this.ctx;
+      let coordX = 0;
+      let coordY = 0;
+      if(offset){
+        const offsetX = this.negativeRemainder(this.worldOffsetX,this.gridGap * 2);
+        const offsetY = this.negativeRemainder(this.worldOffsetY,this.gridGap * 2);
+        coordX = -offsetX;
+        coordY = -offsetY;
+      }
       ctx.save();
       ctx.translate(coordX,coordY);
       if(this.bgPattern === BGPattern.GRID){
@@ -896,7 +928,8 @@ export default class Board{
       }else if(this.bgPattern === BGPattern.QUADRILLE_PAPER){
         ctx.fillStyle = this.quadrillePaperPattern;
       }
-      ctx.fillRect(0,0, this.width + this.gridGap * 2, this.height + this.gridGap * 2);
+      const canvas = ctx.canvas;
+      ctx.fillRect(0,0, canvas.width + this.gridGap * 2, canvas.height + this.gridGap * 2);
       ctx.restore();
     }
   }
