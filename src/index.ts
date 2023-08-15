@@ -1,7 +1,7 @@
 import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange} from './type';
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
-import {debounce} from './utils'
+import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate} from './utils'
 import Ruler from './utils/ruler';
 export {WriteModel};
 function isTouchDevice() {
@@ -467,7 +467,12 @@ export default class Board{
   private loadEvent(){
     let hasMoved = false;
     let hasWrited = false;
+    let isRulerTripleTouch = false;
     let isDoubleTouch = false;
+    let isRulerDoubleTouch = false;
+    let rotationCenter!: { x: number, y: number };
+    let turnStartAngle = 0;
+
     let dragStartX = 0;
     let dragStartY = 0;
     let dragStartTime = 0;
@@ -483,6 +488,7 @@ export default class Board{
     let writeEndX = 0;
     let writeEndY = 0;
     let writeEndTime = 0;
+
     const handleWriteStart = (coords:Coords) => {
       hasMoved = false;
       hasWrited = false;
@@ -509,10 +515,26 @@ export default class Board{
       this.moveT = false;
       this.scrolling = false;
       const touches = event.touches;
-      if (touches.length === 2) {
+      const coords = getPageCoords(touches);
+      const isPointInPath = this.ruler.isPointInPath(coords.pageX,coords.pageY);
+      if(touches.length === 3){
+        isRulerTripleTouch = false;
+        isDoubleTouch = false;
+        isSingleTouch = false;
+        const {angle,center} = getTripleTouchAngleAndCenter(event);
+        const isCenterInPath = this.ruler.isPointInPath(center[0],center[1]);
+        if(isCenterInPath){
+          isRulerTripleTouch = true;
+          
+          turnStartAngle = angle;
+          rotationCenter = {x:center[0],y:center[1]};
+          console.log(turnStartAngle,rotationCenter);
+        }
+      }else if (touches.length === 2) {
         isDoubleTouch = true;
+        isSingleTouch = false;
         if(this.dragLocked){return}
-        const coords = getPageCoords(touches);
+        
         dragEndX = coords.pageX;
         dragEndY = coords.pageY;
         dragEndTime = performance.now();
@@ -520,10 +542,16 @@ export default class Board{
           this.cleanPress = false;
           this.draw();
         }
+        if(isPointInPath){
+          isRulerDoubleTouch = true;
+        }else{
+          isRulerDoubleTouch = false;
+        }
       }else if(touches.length === 1){
         if(!this.writeLocked){
-          const coords = getPageCoords(touches);
-          handleWriteStart(coords);
+          if(!isPointInPath){
+            handleWriteStart(coords);
+          }
         }
       }
     }
@@ -610,7 +638,16 @@ export default class Board{
     }
     const handleTouchMove = (event:TouchEvent) => {
       const touches = event.touches;
-      if (isDoubleTouch) {
+      if(isRulerTripleTouch && event.touches.length === 3) {
+        const {angle} = getTripleTouchAngleAndCenter(event);
+        const deltaAngle = angle - turnStartAngle;
+        turnStartAngle = angle;
+        const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.rulerX,this.rulerY);
+        this.rulerX = newX;
+        this.rulerY = newY;
+        this.rulerAngle += deltaAngle;
+        this.draw();
+      }else if (isDoubleTouch) {
         if(this.dragLocked){return}
         dragStartX = dragEndX;
         dragStartY = dragEndY;
@@ -619,20 +656,28 @@ export default class Board{
         dragEndX = coords.pageX;
         dragEndY = coords.pageY;
         dragEndTime = performance.now();
-        let deltaX = 0;
-        let deltaY = 0;
-        if(this.scrollDirection === ScrollDirection.ALL){
-          deltaX = dragEndX - dragStartX;
-          deltaY = dragEndY - dragStartY;
-        }else if(this.scrollDirection === ScrollDirection.X){
-          deltaX = dragEndX - dragStartX;
-        }else if(this.scrollDirection === ScrollDirection.Y){
-          deltaY = dragEndY - dragStartY;
+        if(isRulerDoubleTouch){
+          const deltaX = dragEndX - dragStartX;
+          const deltaY = dragEndY - dragStartY;
+          this.rulerX += deltaX;
+          this.rulerY += deltaY;
+          this.draw();
+        }else{
+          let deltaX = 0;
+          let deltaY = 0;
+          if(this.scrollDirection === ScrollDirection.ALL){
+            deltaX = dragEndX - dragStartX;
+            deltaY = dragEndY - dragStartY;
+          }else if(this.scrollDirection === ScrollDirection.X){
+            deltaX = dragEndX - dragStartX;
+          }else if(this.scrollDirection === ScrollDirection.Y){
+            deltaY = dragEndY - dragStartY;
+          }
+          this.worldOffsetX -= deltaX;
+          this.worldOffsetY -= deltaY;
+          this.adjustOffset();
+          this.draw();
         }
-        this.worldOffsetX -= deltaX;
-        this.worldOffsetY -= deltaY;
-        this.adjustOffset();
-        this.draw();
       } else if(isSingleTouch){
         const coords = getPageCoords(touches);
         handleWriteMove(coords);
@@ -695,6 +740,7 @@ export default class Board{
         this.cleanPress = false;
         this.draw();
       }
+      isRulerTripleTouch = false;
       isDoubleTouch = false;
       isSingleTouch = false;
     }
