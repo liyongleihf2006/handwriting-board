@@ -282,6 +282,7 @@ export default class Board{
     this.rulerX = 100;
     this.rulerY = 100;
     this.rulerAngle = 15;
+    this.ruler.setXYAngle(this.rulerX,this.rulerY,this.rulerAngle);
     this.loadEvent();
     this.draw();
   }
@@ -450,8 +451,8 @@ export default class Board{
     this.debounceBindOnChange();
   }
   drawRuler(){
-    const rulerShape = this.ruler.draw(this.rulerX,this.rulerY,this.rulerAngle);
-    this.ctx.drawImage(rulerShape,0,0);
+    const rulerShape = this.ruler.draw();
+    this.ctx.drawImage(rulerShape!,0,0);
   }
   draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
@@ -467,7 +468,6 @@ export default class Board{
   private loadEvent(){
     let hasMoved = false;
     let hasWrited = false;
-    let isRulerTripleTouch = false;
     let isDoubleTouch = false;
     let isRulerDoubleTouch = false;
     let rotationCenter!: { x: number, y: number };
@@ -516,21 +516,15 @@ export default class Board{
       this.scrolling = false;
       const touches = event.touches;
       const coords = getPageCoords(touches);
-      const isPointInPath = this.ruler.isPointInPath(coords.pageX,coords.pageY);
-      if(touches.length === 3){
-        isRulerTripleTouch = false;
-        isDoubleTouch = false;
-        isSingleTouch = false;
-        const {angle,center} = getTripleTouchAngleAndCenter(event);
-        const isCenterInPath = this.ruler.isPointInPath(center[0],center[1]);
-        if(isCenterInPath){
-          isRulerTripleTouch = true;
-          
-          turnStartAngle = angle;
-          rotationCenter = {x:center[0],y:center[1]};
-          console.log(turnStartAngle,rotationCenter);
+      let isPointInPath = false;
+      for(let i = 0;i<touches.length;i++){
+        const touch = touches[i];
+        if(this.ruler.isPointInPath(touch.pageX,touch.pageY)){
+          isPointInPath = true;
+          break;
         }
-      }else if (touches.length === 2) {
+      }
+      if (touches.length === 2) {
         isDoubleTouch = true;
         isSingleTouch = false;
         if(this.dragLocked){return}
@@ -544,6 +538,7 @@ export default class Board{
         }
         if(isPointInPath){
           isRulerDoubleTouch = true;
+          rotationCenter = {x:coords.pageX,y:coords.pageY};
         }else{
           isRulerDoubleTouch = false;
         }
@@ -638,16 +633,7 @@ export default class Board{
     }
     const handleTouchMove = (event:TouchEvent) => {
       const touches = event.touches;
-      if(isRulerTripleTouch && event.touches.length === 3) {
-        const {angle} = getTripleTouchAngleAndCenter(event);
-        const deltaAngle = angle - turnStartAngle;
-        turnStartAngle = angle;
-        const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.rulerX,this.rulerY);
-        this.rulerX = newX;
-        this.rulerY = newY;
-        this.rulerAngle += deltaAngle;
-        this.draw();
-      }else if (isDoubleTouch) {
+      if (isDoubleTouch) {
         if(this.dragLocked){return}
         dragStartX = dragEndX;
         dragStartY = dragEndY;
@@ -661,6 +647,17 @@ export default class Board{
           const deltaY = dragEndY - dragStartY;
           this.rulerX += deltaX;
           this.rulerY += deltaY;
+          if(event.touches.length === 2){
+            const {angle} = getTripleTouchAngleAndCenter(event);
+            let deltaAngle = angle - turnStartAngle;
+            deltaAngle %= 10;
+            turnStartAngle = angle;
+            const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.rulerX,this.rulerY);
+            this.rulerX = newX;
+            this.rulerY = newY;
+            this.rulerAngle += deltaAngle;
+            this.ruler.setXYAngle(this.rulerX,this.rulerY,this.rulerAngle);
+          }
           this.draw();
         }else{
           let deltaX = 0;
@@ -740,7 +737,6 @@ export default class Board{
         this.cleanPress = false;
         this.draw();
       }
-      isRulerTripleTouch = false;
       isDoubleTouch = false;
       isSingleTouch = false;
     }

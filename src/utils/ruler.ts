@@ -1,18 +1,18 @@
 import {RotateCoordinates} from '../utils';
 export default class Ruler{
   path!:Path2D;
-  pathInner!:Path2D;
+  pathInner!:Path2D|null;
   isPointInPathInnerVoice:number;
   getNearestDistanceAndPointVoice:number;
-  outline!:[number,number][];
-  offscreen!:OffscreenCanvas;
+  outline!:[number,number][] | null;
+  offscreen!:OffscreenCanvas | null;
 
   longestDistance = 30;
   // 可以用来绘制的距离
   shouldWriteDistance = 3;
-  x!:number;
-  y!:number;
-  angle!:number;
+  private _x!:number;
+  private _y!:number;
+  private _angle!:number;
   cm = 0;
   mm = 0;
   width = 0;
@@ -30,6 +30,37 @@ export default class Ruler{
     this.height = this.cm * 2;
     this.isPointInPathInnerVoice = voice;
     this.getNearestDistanceAndPointVoice = voice;
+  }
+  set x(x:number){
+    this._x = x;
+    this.reset();
+  }
+  get x(){
+    return this._x;
+  }
+  set y(y:number){
+    this._y = y;
+    this.reset();
+  }
+  get y(){
+    return this._y;
+  }
+  set angle(angle:number){
+    this._angle = angle;
+    this.reset();
+  }
+  get angle(){
+    return this._angle;
+  }
+  reset(){
+    this.outline = null;
+    this.pathInner = null;
+    this.offscreen = null;
+  }
+  setXYAngle(x:number,y:number,angle:number){
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
   }
   getNearestDistanceAndPoint(x:number,y:number,getNearestDistanceAndPointVoice:number){
     if(!this.outline || getNearestDistanceAndPointVoice !== this.getNearestDistanceAndPointVoice){
@@ -94,9 +125,9 @@ export default class Ruler{
     return this.ctx.isPointInPath(this.path,x,y);
   }
   generatorOuterBorder(voice = 0){
-    const x = this.x - voice;
-    const y = this.y - voice;
-    const angle = this.angle;
+    const x = this._x - voice;
+    const y = this._y - voice;
+    const angle = this._angle;
     const width = this.width + voice * 2;
     const height = this.height + voice * 2;
     const cm = this.cm;
@@ -126,11 +157,8 @@ export default class Ruler{
     this.path = path;
     return path;
   }
-  draw(x:number,y:number,angle:number){
-    if(x!==this.x || y!==this.y || angle !== this.angle || this.offscreen){
-      this.x = x;
-      this.y = y;
-      this.angle = angle;
+  draw(){
+    if(!this.offscreen){
       const c = this.ctx;
       const canvas = c.canvas;
       this.offscreen = new OffscreenCanvas(canvas.width,canvas.height);
@@ -139,6 +167,9 @@ export default class Ruler{
       const cm = this.cm;
       const mm = this.mm;
       const degreeNumber = this.degreeNumber;
+      const x = this.x;
+      const y = this.y;
+      const angle = this.angle;
       const rotateCoordinates = RotateCoordinates(angle,x,y);
       ctx.save();
       ctx.beginPath();

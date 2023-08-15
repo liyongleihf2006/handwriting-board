@@ -32,48 +32,17 @@ export function getShapeToolNewCoordAndAngle(event: TouchEvent,originX:number,or
 export function getTripleTouchAngleAndCenter(event: TouchEvent){
   const touch1 = event.touches[0];
   const touch2 = event.touches[1];
-  const touch3 = event.touches[2];
 
-  const ox1 = touch1.pageX;
-  const oy1 = touch1.pageY;
-  const ox2 = touch2.pageX;
-  const oy2 = touch2.pageY;
-  const ox3 = touch3.pageX;
-  const oy3 = touch3.pageY;
-
-  const len1 = (oy2 - oy1) ** 2 + (ox2 - ox1) ** 2;
-  const len2 = (oy3 - oy2) ** 2 + (ox3 - ox2) ** 2;
-  const len3 = (oy1 - oy3) ** 2 + (ox1 - ox3) ** 2;
-  
-  let x1=0,y1=0,x2=0,y2=0,x3=0,y3=0;
-  if(len1>=len2&&len1>=len3){
-    x1 = ox3;
-    y1 = oy3;
-    x2 = ox1;
-    y2 = oy1;
-    x3 = ox2;
-    y3 = oy2;
-  }else if(len2>=len1&&len2>=len3){
-    x1 = ox1;
-    y1 = oy1;
-    x2 = ox2;
-    y2 = oy2;
-    x3 = ox3;
-    y3 = oy3;
-  }else if(len3>=len1&&len3>=len2){
-    x1 = ox2;
-    y1 = oy2;
-    x2 = ox3;
-    y2 = oy3;
-    x3 = ox1;
-    y3 = oy1;
-  }
-  const slopeBC = (y3 - y2) / (x3 - x2);
-  const perpendicularSlopeBC = -1 / slopeBC;
-  const angle = Math.atan2(perpendicularSlopeBC, 1) * (180 / Math.PI);
-  const adjustedAngle = angle;
-
-  return {angle:adjustedAngle,center:[x1,y1]};
+  const x1 = touch1.pageX;
+  const y1 = touch1.pageY;
+  const x2 = touch2.pageX;
+  const y2 = touch2.pageY;
+  const deltaX = x2 - x1;
+  const deltaY = y2 - y1;
+  const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+  const centerX = (x1 + x2)/2;
+  const centerY = (y1 + y2)/2;
+  return {angle,center:[centerX,centerY]};
 }
 export function rotateCoordinate(x0: number, y0: number, angle: number, originX: number, originY: number): [number, number] {
   const radians = angle * (Math.PI / 180);
