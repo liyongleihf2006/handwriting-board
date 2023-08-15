@@ -172,6 +172,9 @@ export default class Board{
   private gridPaperPattern:CanvasPattern;
   private quadrillePaperPattern:CanvasPattern;
   private ruler:Ruler;
+  private activateAuxiliaryTools = false;
+
+  coherentDistance = 30;
   scrollRange:ScrollRange;
   scrollDirection:ScrollDirection;
   bgPattern:BGPattern;
@@ -272,7 +275,7 @@ export default class Board{
     this.gridPattern = this.generateGridPattern();
     this.gridPaperPattern = this.generateGridPaperPattern();
     this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
-    this.ruler = new Ruler(this.ctx);
+    this.ruler = new Ruler(this.ctx,this.voice);
     this.loadEvent();
     this.draw();
   }
@@ -475,8 +478,15 @@ export default class Board{
       hasWrited = false;
       isSingleTouch = true;
       needPushPoints = true;
-      writeEndX = coords.pageX;
-      writeEndY = coords.pageY;
+      const {conformingToDistance,nearestPoints} = this.ruler.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
+      if(conformingToDistance){
+        this.activateAuxiliaryTools = true;
+        doInsertPointByRuler(nearestPoints);
+      }else{
+        this.activateAuxiliaryTools = false;
+        writeEndX = coords.pageX;
+        writeEndY = coords.pageY;
+      }
       writeEndTime = performance.now();
       if(this.cleanState){
         this.cleanX = writeEndX;
@@ -515,6 +525,49 @@ export default class Board{
         handleWriteStart(coords);
       }
     }
+    const doInsertPointByRuler = (nearestPoints:[number,number][]) => {
+      const len = nearestPoints.length;
+      if( len > 1){
+        for(let i = 1;i<len;i++){
+          const prevPoint = nearestPoints[i-1];
+          const currentPoint = nearestPoints[i];
+
+          const prevMiddleX = (prevPoint[0] + writeEndX)/2;
+          const prevMiddleY = (prevPoint[1] + writeEndY)/2;
+          const prevIsInPath = this.ruler.isPointInPathInner(prevMiddleX,prevMiddleY,this.voice);
+          
+
+          const currentMiddleX = (currentPoint[0] + writeEndX)/2;
+          const currentMiddleY = (currentPoint[1] + writeEndY)/2;
+          const currentIsInPath = this.ruler.isPointInPathInner(currentMiddleX,currentMiddleY,this.voice);
+          
+          
+          if(!currentIsInPath && !prevIsInPath){
+            doInsertPoint(prevPoint[0],prevPoint[1],currentPoint[0],currentPoint[1]);
+          }else{
+            needPushPoints = true;
+          }
+        }
+      }
+      writeEndX = nearestPoints[len-1][0];
+      writeEndY = nearestPoints[len-1][1];
+    }
+    const doInsertPoint = (writeStartX:number,writeStartY:number,writeEndX:number,writeEndY:number) => {
+      if(needPushPoints){
+        this.pointsGroup.push({
+          corners:[],
+          fillStyle:this.color
+        });
+        needPushPoints = false;
+      }
+      const points = this.pushPoints(writeStartX,writeStartY,writeEndX,writeEndY,writeStartTime,writeEndTime);
+      if(points){
+        this.singleDraw([{
+          corners:[points],
+          fillStyle:this.color
+        }])
+      }
+    }
     const handleWriteMove = (coords:Coords) => {
       hasMoved = true;
       hasWrited = true;
@@ -530,19 +583,11 @@ export default class Board{
         this.doClean(writeEndX,writeEndY);
         this.draw();
       }else{
-        if(needPushPoints){
-          this.pointsGroup.push({
-            corners:[],
-            fillStyle:this.color
-          });
-          needPushPoints = false;
-        }
-        const points = this.pushPoints(writeStartX,writeStartY,writeEndX,writeEndY,writeStartTime,writeEndTime);
-        if(points){
-          this.singleDraw([{
-            corners:[points],
-            fillStyle:this.color
-          }])
+        if(this.activateAuxiliaryTools){
+          const {nearestPoints} = this.ruler.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
+          doInsertPointByRuler(nearestPoints);
+        }else{
+          doInsertPoint(writeStartX,writeStartY,writeEndX,writeEndY);
         }
       }
     }

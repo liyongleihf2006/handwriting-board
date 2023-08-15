@@ -9,11 +9,15 @@ export function debounce(func: Function, delay: number) {
     }, delay);
   };
 }
-export function rotateCoordinates(x: number, y: number, angle: number): [number, number] {  
+export function RotateCoordinates(angle: number,x0:number,y0:number) {  
   const angleInRadians = angle * Math.PI / 180; 
   const cosAngle = Math.cos(angleInRadians);  
-  const sinAngle = Math.sin(angleInRadians);  
-  const x0 = x * cosAngle - y * sinAngle; 
-  const y0 = x * sinAngle + y * cosAngle;  
-  return [x0, y0];
+  const sinAngle = Math.sin(angleInRadians);
+  return function(x: number, y: number):[number, number]{
+    const x1 = x - x0;
+    const y1 = y - y0;
+    const targetX = x1 * cosAngle - y1 * sinAngle + x0; 
+    const targetY = x1 * sinAngle + y1 * cosAngle + y0;  
+    return [targetX, targetY];
+  }
 }
