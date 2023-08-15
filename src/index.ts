@@ -173,6 +173,9 @@ export default class Board{
   private quadrillePaperPattern:CanvasPattern;
   private ruler:Ruler;
   private activateAuxiliaryTools = false;
+  private rulerX:number;
+  private rulerY:number;
+  private rulerAngle:number;
 
   coherentDistance = 30;
   scrollRange:ScrollRange;
@@ -276,6 +279,9 @@ export default class Board{
     this.gridPaperPattern = this.generateGridPaperPattern();
     this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
     this.ruler = new Ruler(this.ctx,this.voice);
+    this.rulerX = 100;
+    this.rulerY = 100;
+    this.rulerAngle = 15;
     this.loadEvent();
     this.draw();
   }
@@ -443,13 +449,17 @@ export default class Board{
     this.doWriting(pointsGroup);
     this.debounceBindOnChange();
   }
+  drawRuler(){
+    const rulerShape = this.ruler.draw(this.rulerX,this.rulerY,this.rulerAngle);
+    this.ctx.drawImage(rulerShape,0,0);
+  }
   draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
     this.loadGrid(this.ctx);
     this.loadRule();
     this.loadBorder();
     this.doWriting(this.pointsGroup);
-    this.ruler.draw();
+    this.drawRuler();
     this.drawEraser();
     // this.drawEagleEye();
     this.debounceBindOnChange();

@@ -5,13 +5,14 @@ export default class Ruler{
   isPointInPathInnerVoice:number;
   getNearestDistanceAndPointVoice:number;
   outline!:[number,number][];
+  offscreen!:OffscreenCanvas;
 
   longestDistance = 30;
   // 可以用来绘制的距离
   shouldWriteDistance = 3;
-  x = 100;
-  y = 100;
-  angle = 10;
+  x!:number;
+  y!:number;
+  angle!:number;
   cm = 0;
   mm = 0;
   width = 0;
@@ -125,55 +126,61 @@ export default class Ruler{
     this.path = path;
     return path;
   }
-  draw(){
-    const ctx = this.ctx;
-    const x = this.x;
-    const y = this.y;
-    const angle = this.angle;
-    const marginH = this.marginH;
-    const cm = this.cm;
-    const mm = this.mm;
-    const degreeNumber = this.degreeNumber;
-    const rotateCoordinates = RotateCoordinates(angle,x,y);
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(0,0,0,.08)';
-    const path = this.generatorOuterBorder();
-    ctx.fill(path);
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'black';
-    ctx.font = "3mm serif";
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.beginPath();
-    const cmLen = 0.5 * cm;
-    const textPos = y + cmLen + mm;
-    const mmLen = cmLen * 0.6;
-    const halfCmLen = cmLen * 0.8;
-    for(let i = 0;i<=degreeNumber;i++){
-      const currentX = x + marginH + i * cm;
-      ctx.moveTo(...rotateCoordinates(currentX,y));
-      ctx.lineTo(...rotateCoordinates(currentX,y + cmLen));
+  draw(x:number,y:number,angle:number){
+    if(x!==this.x || y!==this.y || angle !== this.angle || this.offscreen){
+      this.x = x;
+      this.y = y;
+      this.angle = angle;
+      const c = this.ctx;
+      const canvas = c.canvas;
+      this.offscreen = new OffscreenCanvas(canvas.width,canvas.height);
+      const ctx = this.offscreen.getContext('2d')!;
+      const marginH = this.marginH;
+      const cm = this.cm;
+      const mm = this.mm;
+      const degreeNumber = this.degreeNumber;
+      const rotateCoordinates = RotateCoordinates(angle,x,y);
       ctx.save();
-      ctx.translate(...rotateCoordinates(currentX,textPos));
-      ctx.rotate(angle * Math.PI / 180);
-      ctx.fillText(String(i),0,0);
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(0,0,0,.08)';
+      const path = this.generatorOuterBorder();
+      ctx.fill(path);
       ctx.restore();
-      if(i<degreeNumber){
-        for(let j = 1;j<10;j++){
-          const currentMmX = currentX + j * mm;
-          ctx.moveTo(...rotateCoordinates(currentMmX,y));
-          if(j === 5){
-            ctx.lineTo(...rotateCoordinates(currentMmX,y + halfCmLen));
-          }else{
-            ctx.lineTo(...rotateCoordinates(currentMmX,y + mmLen));
+
+      ctx.save();
+      ctx.strokeStyle = 'black';
+      ctx.font = "3mm serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.beginPath();
+      const cmLen = 0.5 * cm;
+      const textPos = y + cmLen + mm;
+      const mmLen = cmLen * 0.6;
+      const halfCmLen = cmLen * 0.8;
+      for(let i = 0;i<=degreeNumber;i++){
+        const currentX = x + marginH + i * cm;
+        ctx.moveTo(...rotateCoordinates(currentX,y));
+        ctx.lineTo(...rotateCoordinates(currentX,y + cmLen));
+        ctx.save();
+        ctx.translate(...rotateCoordinates(currentX,textPos));
+        ctx.rotate(angle * Math.PI / 180);
+        ctx.fillText(String(i),0,0);
+        ctx.restore();
+        if(i<degreeNumber){
+          for(let j = 1;j<10;j++){
+            const currentMmX = currentX + j * mm;
+            ctx.moveTo(...rotateCoordinates(currentMmX,y));
+            if(j === 5){
+              ctx.lineTo(...rotateCoordinates(currentMmX,y + halfCmLen));
+            }else{
+              ctx.lineTo(...rotateCoordinates(currentMmX,y + mmLen));
+            }
           }
         }
       }
+      ctx.stroke();
+      ctx.restore();
     }
-    ctx.stroke();
-    ctx.restore();
+    return this.offscreen;
   }
 }
