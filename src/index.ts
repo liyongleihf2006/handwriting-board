@@ -2,7 +2,7 @@ import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRa
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
 import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate} from './utils'
-import Ruler from './utils/ruler';
+import ToolShape from './component/ToolShape';
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
@@ -171,11 +171,11 @@ export default class Board{
   private gridPattern:CanvasPattern;
   private gridPaperPattern:CanvasPattern;
   private quadrillePaperPattern:CanvasPattern;
-  private ruler:Ruler;
-  private activateAuxiliaryTools = false;
-  private rulerX:number;
-  private rulerY:number;
-  private rulerAngle:number;
+  private toolShape:ToolShape;
+  private activateToolShape = false;
+  private toolShapeX:number;
+  private toolShapeY:number;
+  private toolShapeAngle:number;
 
   coherentDistance = 30;
   scrollRange:ScrollRange;
@@ -278,11 +278,11 @@ export default class Board{
     this.gridPattern = this.generateGridPattern();
     this.gridPaperPattern = this.generateGridPaperPattern();
     this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
-    this.ruler = new Ruler(this.ctx,this.voice);
-    this.rulerX = 100;
-    this.rulerY = 100;
-    this.rulerAngle = 15;
-    this.ruler.setXYAngle(this.rulerX,this.rulerY,this.rulerAngle);
+    this.toolShape = new ToolShape(this.ctx,this.voice);
+    this.toolShapeX = 100;
+    this.toolShapeY = 100;
+    this.toolShapeAngle = 15;
+    this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
     this.loadEvent();
     this.draw();
   }
@@ -450,9 +450,9 @@ export default class Board{
     this.doWriting(pointsGroup);
     this.debounceBindOnChange();
   }
-  drawRuler(){
-    const rulerShape = this.ruler.draw();
-    this.ctx.drawImage(rulerShape!,0,0);
+  drawToolShape(){
+    const toolShapeOffsceen = this.toolShape.draw();
+    this.ctx.drawImage(toolShapeOffsceen!,0,0);
   }
   draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
@@ -460,7 +460,7 @@ export default class Board{
     this.loadRule();
     this.loadBorder();
     this.doWriting(this.pointsGroup);
-    this.drawRuler();
+    this.drawToolShape();
     this.drawEraser();
     // this.drawEagleEye();
     this.debounceBindOnChange();
@@ -469,7 +469,7 @@ export default class Board{
     let hasMoved = false;
     let hasWrited = false;
     let isDoubleTouch = false;
-    let isRulerDoubleTouch = false;
+    let isToolShapeDoubleTouch = false;
     let rotationCenter!: { x: number, y: number };
     let turnStartAngle = 0;
 
@@ -494,12 +494,12 @@ export default class Board{
       hasWrited = false;
       isSingleTouch = true;
       needPushPoints = true;
-      const {conformingToDistance,nearestPoints} = this.ruler.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
+      const {conformingToDistance,nearestPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
       if(conformingToDistance){
-        this.activateAuxiliaryTools = true;
-        doInsertPointByRuler(nearestPoints);
+        this.activateToolShape = true;
+        doInsertPointByToolShape(nearestPoints);
       }else{
-        this.activateAuxiliaryTools = false;
+        this.activateToolShape = false;
         writeEndX = coords.pageX;
         writeEndY = coords.pageY;
       }
@@ -519,7 +519,7 @@ export default class Board{
       let isPointInPath = false;
       for(let i = 0;i<touches.length;i++){
         const touch = touches[i];
-        if(this.ruler.isPointInPath(touch.pageX,touch.pageY)){
+        if(this.toolShape.isPointInPath(touch.pageX,touch.pageY)){
           isPointInPath = true;
           break;
         }
@@ -537,10 +537,10 @@ export default class Board{
           this.draw();
         }
         if(isPointInPath){
-          isRulerDoubleTouch = true;
+          isToolShapeDoubleTouch = true;
           rotationCenter = {x:coords.pageX,y:coords.pageY};
         }else{
-          isRulerDoubleTouch = false;
+          isToolShapeDoubleTouch = false;
         }
       }else if(touches.length === 1){
         if(!this.writeLocked){
@@ -558,7 +558,7 @@ export default class Board{
         handleWriteStart(coords);
       }
     }
-    const doInsertPointByRuler = (nearestPoints:[number,number][]) => {
+    const doInsertPointByToolShape = (nearestPoints:[number,number][]) => {
       const len = nearestPoints.length;
       if( len > 1){
         for(let i = 1;i<len;i++){
@@ -567,12 +567,12 @@ export default class Board{
 
           const prevMiddleX = (prevPoint[0] + writeEndX)/2;
           const prevMiddleY = (prevPoint[1] + writeEndY)/2;
-          const prevIsInPath = this.ruler.isPointInPathInner(prevMiddleX,prevMiddleY,this.voice);
+          const prevIsInPath = this.toolShape.isPointInPathInner(prevMiddleX,prevMiddleY,this.voice);
           
 
           const currentMiddleX = (currentPoint[0] + writeEndX)/2;
           const currentMiddleY = (currentPoint[1] + writeEndY)/2;
-          const currentIsInPath = this.ruler.isPointInPathInner(currentMiddleX,currentMiddleY,this.voice);
+          const currentIsInPath = this.toolShape.isPointInPathInner(currentMiddleX,currentMiddleY,this.voice);
           
           
           if(!currentIsInPath && !prevIsInPath){
@@ -616,9 +616,9 @@ export default class Board{
         this.doClean(writeEndX,writeEndY);
         this.draw();
       }else{
-        if(this.activateAuxiliaryTools){
-          const {nearestPoints} = this.ruler.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
-          doInsertPointByRuler(nearestPoints);
+        if(this.activateToolShape){
+          const {nearestPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
+          doInsertPointByToolShape(nearestPoints);
         }else{
           doInsertPoint(writeStartX,writeStartY,writeEndX,writeEndY);
         }
@@ -642,21 +642,21 @@ export default class Board{
         dragEndX = coords.pageX;
         dragEndY = coords.pageY;
         dragEndTime = performance.now();
-        if(isRulerDoubleTouch){
+        if(isToolShapeDoubleTouch){
           const deltaX = dragEndX - dragStartX;
           const deltaY = dragEndY - dragStartY;
-          this.rulerX += deltaX;
-          this.rulerY += deltaY;
+          this.toolShapeX += deltaX;
+          this.toolShapeY += deltaY;
           if(event.touches.length === 2){
             const {angle} = getTripleTouchAngleAndCenter(event);
             let deltaAngle = angle - turnStartAngle;
             deltaAngle %= 10;
             turnStartAngle = angle;
-            const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.rulerX,this.rulerY);
-            this.rulerX = newX;
-            this.rulerY = newY;
-            this.rulerAngle += deltaAngle;
-            this.ruler.setXYAngle(this.rulerX,this.rulerY,this.rulerAngle);
+            const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.toolShapeX,this.toolShapeY);
+            this.toolShapeX = newX;
+            this.toolShapeY = newY;
+            this.toolShapeAngle += deltaAngle;
+            this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
           }
           this.draw();
         }else{
@@ -720,7 +720,7 @@ export default class Board{
         }else if(this.scrollDirection === ScrollDirection.Y){
           speedY = deltaY/deltaTime ;
         }
-        if(!isRulerDoubleTouch){
+        if(!isToolShapeDoubleTouch){
           scrollDecay(speedX,speedY);
         }
       } else if (isSingleTouch){
