@@ -1,8 +1,11 @@
 import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange} from './type';
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
-import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate} from './utils'
+import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils'
 import ToolShape from './component/ToolShape';
+import Background from './component/Background';
+import RuleAuxiliary from './component/RuleAuxiliary';
+import Border from './component/Border';
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
@@ -168,14 +171,15 @@ export default class Board{
   private maxY!:number;
   private moveT = false;
   private debounceBindOnChange:Function;
-  private gridPattern:CanvasPattern;
-  private gridPaperPattern:CanvasPattern;
-  private quadrillePaperPattern:CanvasPattern;
+  
   private toolShape:ToolShape;
   private activateToolShape = false;
   private toolShapeX:number;
   private toolShapeY:number;
   private toolShapeAngle:number;
+  private background:Background;
+  private ruleAuxiliary:RuleAuxiliary;
+  private border:Border;
 
   coherentDistance = 30;
   scrollRange:ScrollRange;
@@ -275,14 +279,15 @@ export default class Board{
     canvas.height = this.height;
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
     this.ctx.imageSmoothingQuality = "high";
-    this.gridPattern = this.generateGridPattern();
-    this.gridPaperPattern = this.generateGridPaperPattern();
-    this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
+    
     this.toolShape = new ToolShape(this.ctx,this.voice);
     this.toolShapeX = 100;
     this.toolShapeY = 100;
     this.toolShapeAngle = 15;
     this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
+    this.background = new Background(this.ctx,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
+    this.ruleAuxiliary = new RuleAuxiliary(this.ctx,this.ruleStrokeStyle,this.ruleGap,this.ruleUnitLen);
+    this.border = new Border(this.ctx,this.borderStyle,this.borderWidth);
     this.loadEvent();
     this.draw();
   }
@@ -426,11 +431,11 @@ export default class Board{
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
     if(this.minX!==undefined){
       canvas.height = Math.ceil(this.maxY/this.height) * this.height;
-      this.loadGrid(ctx,false);
+      this.loadBackground(ctx,false);
       this.drawPureCanvas(ctx,false);
     }else{
       canvas.height = this.height;
-      this.loadGrid(ctx,false);
+      this.loadBackground(ctx,false);
     }
     return canvas;
   }
@@ -456,7 +461,7 @@ export default class Board{
   }
   draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
-    this.loadGrid(this.ctx);
+    this.loadBackground(this.ctx);
     this.loadRule();
     this.loadBorder();
     this.doWriting(this.pointsGroup);
@@ -960,80 +965,23 @@ export default class Board{
       })
     })
   }
-  private generateGridPattern(){
-    const gap = this.gridGap;
-    const bgOffscreen = new OffscreenCanvas(gap * 2, gap * 2);
-    const ctx = bgOffscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
-    ctx.fillStyle = this.gridFillStyle;
-    ctx.fillRect(0, 0, gap, gap);
-    ctx.fillRect(gap, gap, gap, gap);
-    const pattern = ctx.createPattern(bgOffscreen, "repeat") as CanvasPattern;
-    return pattern;
-  }
-  private generateGridPaperPattern(){
-    const gap = this.gridPaperGap;
-    const bgOffscreen = new OffscreenCanvas(gap, gap);
-    const ctx = bgOffscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
-    ctx.strokeStyle = this.gridPaperStrokeStyle;
-    ctx.strokeRect(0, 0, gap, gap);
-    ctx.setLineDash([2, 2]);
-    ctx.beginPath();
-    ctx.moveTo(gap/2,0);
-    ctx.lineTo(gap/2,gap);
-    ctx.moveTo(0,gap/2);
-    ctx.lineTo(gap,gap/2);
-    ctx.stroke();
-    const pattern = ctx.createPattern(bgOffscreen, "repeat") as CanvasPattern;
-    return pattern;
-  }
-  private generateQuadrillePaperPattern(){
-  //   quadrillePaperVerticalMargin:number;
-  // quadrillePaperGap:number;
-  // gridFillStyle:string;
-  // gridPaperStrokeStyle:string;
-  // quadrillePaperStrokeStyles:string[];
-    const quadrillePaperVerticalMargin = this.quadrillePaperVerticalMargin;
-    const gap = this.quadrillePaperGap;
-    const quadrillePaperStrokeStyles = this.quadrillePaperStrokeStyles;
-    const height = quadrillePaperVerticalMargin * 2 + gap * 3;
-    const bgOffscreen = new OffscreenCanvas(this.width, height);
-    const ctx = bgOffscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
-    for(let i = 0;i<quadrillePaperStrokeStyles.length;i++){
-      ctx.strokeStyle = quadrillePaperStrokeStyles[i];
-      ctx.beginPath();
-      ctx.moveTo(0,quadrillePaperVerticalMargin + gap * i);
-      ctx.lineTo(this.width,quadrillePaperVerticalMargin + gap * i);
-      ctx.stroke();
-    }
-    const pattern = ctx.createPattern(bgOffscreen, "repeat") as CanvasPattern;
-    return pattern;
-  }
-  private loadGrid(ctx:CanvasRenderingContext2D,offset=true){
+  private loadBackground(ctx:CanvasRenderingContext2D,offset=true){
     if(this.enableBG){
       let coordX = 0;
       let coordY = 0;
+      let background:Background;
       if(offset){
-        const offsetX = this.negativeRemainder(this.worldOffsetX,this.gridGap * 2);
-        const offsetY = this.negativeRemainder(this.worldOffsetY,this.gridGap * 2);
+        const offsetX = negativeRemainder(this.worldOffsetX,this.gridGap * 2);
+        const offsetY = negativeRemainder(this.worldOffsetY,this.gridGap * 2);
         coordX = -offsetX;
         coordY = -offsetY;
+        background = this.background;
+      }else{
+        background = new Background(ctx,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
       }
-      ctx.save();
-      ctx.translate(coordX,coordY);
-      if(this.bgPattern === BGPattern.GRID){
-        ctx.fillStyle = this.gridPattern;
-      }else if(this.bgPattern === BGPattern.GRID_PAPER){
-        ctx.fillStyle = this.gridPaperPattern;
-      }else if(this.bgPattern === BGPattern.QUADRILLE_PAPER){
-        ctx.fillStyle = this.quadrillePaperPattern;
-      }
-      const canvas = ctx.canvas;
-      ctx.fillRect(0,0, canvas.width + this.gridGap * 2, canvas.height + this.gridGap * 2);
-      ctx.restore();
+      const backgroundOffsceen = background.draw(coordX,coordY,this.bgPattern);
+      ctx.drawImage(backgroundOffsceen!,0,0);
     }
-  }
-  private negativeRemainder(a:number, b:number) {
-    return ((a % b) + b) % b;
   }
   // private drawEagleEye(){
   //   if(!this.enableEagleEyeMode){
@@ -1072,76 +1020,14 @@ export default class Board{
   // }
   private loadBorder(){
     if(this.showBorder){
-      const ctx = this.ctx;
-      ctx.beginPath();
-      ctx.save();
-      ctx.strokeStyle = this.borderStyle;
-      ctx.lineWidth = this.borderWidth;
-      ctx.strokeRect(0,0,this.width,this.height);
-      ctx.restore();
+      const borderOffsceen = this.border.draw();
+      this.ctx.drawImage(borderOffsceen!,0,0);
     }
   }
   private loadRule(){
     if(this.rule){
-      const ctx = this.ctx;
-      ctx.beginPath();
-      ctx.save();
-      ctx.strokeStyle = this.ruleStrokeStyle;
-      ctx.font = "12px Arial";
-      ctx.textAlign = "center";
-      ctx.fillStyle = this.ruleStrokeStyle; 
-      const offsetX = this.negativeRemainder(this.worldOffsetX,(this.ruleGap * 10));
-      const offsetY = this.negativeRemainder(this.worldOffsetY,(this.ruleGap * 10));
-      const offsetXRule = (this.worldOffsetX - this.worldOffsetX%(this.ruleGap * 10))/(this.ruleGap * 10) * 10;
-      const offsetYRule = (this.worldOffsetY - this.worldOffsetY%(this.ruleGap * 10))/(this.ruleGap * 10) * 10;
-      let i = 0;
-      let j = 0;
-      let coordX = -offsetX;
-      let coordY = -offsetY;
-      const fontGap = 3;
-      while(coordX <= this.width){
-        let len = this.ruleUnitLen;
-        if(!(i%10)){
-          len = this.ruleUnitLen * 2.5;
-        }else if(!(i%5)){
-          len = this.ruleUnitLen * 1.5;
-        }
-        ctx.moveTo(coordX,0);
-        ctx.lineTo(coordX,len);
-        ctx.moveTo(coordX,this.height);
-        ctx.lineTo(coordX,this.height-len);
-        if(!(i%10)){
-          ctx.textBaseline = "top";
-          ctx.fillText(String(i + offsetXRule),coordX,len + fontGap);
-          ctx.textBaseline = "bottom";
-          ctx.fillText(String(i + offsetXRule),coordX,this.height-len - fontGap);
-        }
-        coordX+=this.ruleGap;
-        i++;
-      }
-      ctx.textBaseline = "middle";
-      while(coordY <= this.height){
-        let len = this.ruleUnitLen;
-        if(!(j%10)){
-          len = this.ruleUnitLen * 2.5;
-        }else if(!(j%5)){
-          len = this.ruleUnitLen * 1.5;
-        }
-        ctx.moveTo(0,coordY);
-        ctx.lineTo(len,coordY);
-        ctx.moveTo(this.width,coordY);
-        ctx.lineTo(this.width - len,coordY);
-        if(!(j%10)){
-          ctx.textAlign = "left";
-          ctx.fillText(String(j + offsetYRule),len + fontGap,coordY);
-          ctx.textAlign = "right";
-          ctx.fillText(String(j + offsetYRule),this.width - len - fontGap,coordY);
-        }
-        coordY+=this.ruleGap;
-        j++;
-      }
-      ctx.stroke();
-      ctx.restore();
+      const ruleAuxiliaryOffsceen = this.ruleAuxiliary.draw(this.worldOffsetX,this.worldOffsetY);
+      this.ctx.drawImage(ruleAuxiliaryOffsceen!,0,0);
     }
   }
 }

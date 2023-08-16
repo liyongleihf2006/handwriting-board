@@ -57,3 +57,6 @@ export function rotateCoordinate(x0: number, y0: number, angle: number, originX:
 
   return [rotatedX, rotatedY];
 }
+export function negativeRemainder(a:number, b:number) {
+  return ((a % b) + b) % b;
+}
