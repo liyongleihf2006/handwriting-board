@@ -1,32 +1,30 @@
 import { negativeRemainder } from "../utils";
-
+import { generateCanvas } from '../utils';
 export default class RuleAuxiliary{
-  width:number;
-  height:number;
 
-  offscreen!:OffscreenCanvas | null;
+  canvas:HTMLCanvasElement;
+  ctx:CanvasRenderingContext2D;
+
   worldOffsetX!:number;
   worldOffsetY!:number;
 
   constructor(
-    public ctx:CanvasRenderingContext2D,
+    public width:number,
+    public height:number,
     public ruleStrokeStyle:string,
     public ruleGap:number,
     public ruleUnitLen:number,
   ){
-    const canvas = ctx.canvas;
-    this.width = canvas.width;
-    this.height = canvas.height;
+    this.canvas = generateCanvas(width,height);
+    this.ctx = this.canvas.getContext('2d')!;
   }
   draw(worldOffsetX:number,worldOffsetY:number){
     if(worldOffsetX!==this.worldOffsetX || worldOffsetY!==this.worldOffsetY){
       this.worldOffsetX = worldOffsetX;
       this.worldOffsetY = worldOffsetY;
-      this.offscreen = null;
-    }
-    if(!this.offscreen){
-      this.offscreen = new OffscreenCanvas(this.width,this.height);
-      const ctx = this.offscreen.getContext('2d')!;
+      const ctx = this.ctx;
+      ctx.beginPath();
+      ctx.clearRect(0,0,this.width,this.height);
       ctx.strokeStyle = this.ruleStrokeStyle;
       ctx.font = "12px Arial";
       ctx.textAlign = "center";
@@ -81,8 +79,7 @@ export default class RuleAuxiliary{
         coordY+=this.ruleGap;
         j++;
       }
-      ctx.stroke();      
+      ctx.stroke(); 
     }
-    return this.offscreen;
   }
 }

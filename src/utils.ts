@@ -60,3 +60,15 @@ export function rotateCoordinate(x0: number, y0: number, angle: number, originX:
 export function negativeRemainder(a:number, b:number) {
   return ((a % b) + b) % b;
 }
+export function generateCanvas(width:number,height:number){
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  Object.assign(canvas.style,{
+    left:'0',
+    top:'0',
+    position:'absolute',
+    'pointer-events':'none'
+  });
+  return canvas;
+}

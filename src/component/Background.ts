@@ -1,21 +1,21 @@
 import { BGPattern } from "../enum";
+import { generateCanvas } from '../utils';
 
 export default class Background{
   private gridPattern:CanvasPattern;
   private gridPaperPattern:CanvasPattern;
   private quadrillePaperPattern:CanvasPattern;
 
-
-  width:number;
-  height:number;
   bgPattern!:BGPattern;
 
-  offscreen!:OffscreenCanvas | null;
+  canvas:HTMLCanvasElement;
+  ctx:CanvasRenderingContext2D;
   coordX!:number;
   coordY!:number;
 
   constructor(
-    public ctx:CanvasRenderingContext2D,
+    public width:number,
+    public height:number,
     public gridGap:number,
     public gridFillStyle:string,
     public gridPaperGap:number,
@@ -24,9 +24,8 @@ export default class Background{
     public quadrillePaperGap:number,
     public quadrillePaperStrokeStyles:string[]
   ){
-    const canvas = ctx.canvas;
-    this.width = canvas.width;
-    this.height = canvas.height;
+    this.canvas = generateCanvas(width,height);
+    this.ctx = this.canvas.getContext('2d')!;
     this.gridPattern = this.generateGridPattern();
     this.gridPaperPattern = this.generateGridPaperPattern();
     this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
@@ -36,11 +35,10 @@ export default class Background{
       this.coordX = coordX;
       this.coordY = coordY;
       this.bgPattern = bgPattern;
-      this.offscreen = null;
-    }
-    if(!this.offscreen){
-      this.offscreen = new OffscreenCanvas(this.width,this.height);
-      const ctx = this.offscreen.getContext('2d')!;
+      const ctx = this.ctx;
+      ctx.clearRect(0,0,this.width + this.gridGap * 2, this.height + this.gridGap * 2);
+      ctx.save();
+      ctx.beginPath();
       ctx.translate(coordX,coordY);
       if(this.bgPattern === BGPattern.GRID){
         ctx.fillStyle = this.gridPattern;
@@ -50,8 +48,8 @@ export default class Background{
         ctx.fillStyle = this.quadrillePaperPattern;
       }
       ctx.fillRect(0,0, this.width + this.gridGap * 2, this.height + this.gridGap * 2);
+      ctx.restore();
     }
-    return this.offscreen;
   }
   private generateGridPattern(){
     const gap = this.gridGap;

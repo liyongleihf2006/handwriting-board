@@ -1,7 +1,7 @@
 import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange} from './type';
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
-import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils'
+import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder,generateCanvas} from './utils'
 import ToolShape from './component/ToolShape';
 import Background from './component/Background';
 import RuleAuxiliary from './component/RuleAuxiliary';
@@ -153,7 +153,6 @@ export default class Board{
   // private eagleEyeOffscreenCtx!:OffscreenCanvasRenderingContext2D;
   private width:number;
   private height:number;
-  private ctx:CanvasRenderingContext2D;
   private worldOffsetX = 0;
   private worldOffsetY = 0;
   private scrolling = false;
@@ -211,7 +210,11 @@ export default class Board{
   borderWidth:number;
   containerOffset:ContainerOffset;
   onChange:OnChange|undefined;
-  constructor(public canvas:HTMLCanvasElement,options:Options = defaultOptions){
+
+  ctx!:CanvasRenderingContext2D;
+
+  
+  constructor(public container:HTMLDivElement,options:Options = defaultOptions){
     this.scrollRange = options.scrollRange ?? defaultScrollRange;
     this.scrollDirection = options.scrollDirection ?? defaultScrollDirection;
     this.bgPattern = options.bgPattern ?? defaultBGPattern;
@@ -241,7 +244,7 @@ export default class Board{
     this.borderWidth = options.borderWidth ?? defaultBorderWidth;
     this.containerOffset = options.containerOffset ?? (()=>{
       const scrollingElement = document.scrollingElement as HTMLElement;
-      const rect = this.canvas.getBoundingClientRect();
+      const rect = this.container.getBoundingClientRect();
       return {
         x:rect.x + scrollingElement.scrollLeft,
         y:rect.y + scrollingElement.scrollTop
@@ -272,22 +275,26 @@ export default class Board{
         }
       };
     }
-    const rect = canvas.getBoundingClientRect();
+    const rect = container.getBoundingClientRect();
     this.width = rect.width;
     this.height = rect.height;
-    canvas.width = this.width;
-    canvas.height = this.height;
-    this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
-    this.ctx.imageSmoothingQuality = "high";
     
-    this.toolShape = new ToolShape(this.ctx,this.voice);
+    this.background = new Background(this.width,this.height,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
+    this.container.append(this.background.canvas);
+    this.ruleAuxiliary = new RuleAuxiliary(this.width,this.height,this.ruleStrokeStyle,this.ruleGap,this.ruleUnitLen);
+    this.container.append(this.ruleAuxiliary.canvas);
+    this.border = new Border(this.width,this.height,this.borderStyle,this.borderWidth);
+    this.container.append(this.border.canvas);
+
+    const canvas = generateCanvas(this.width,this.height);
+    this.container.append(canvas);
+    this.ctx = canvas.getContext('2d')!;
+    this.toolShape = new ToolShape(this.width,this.height,this.voice);
+    this.container.append(this.toolShape.canvas);
     this.toolShapeX = 100;
     this.toolShapeY = 100;
     this.toolShapeAngle = 15;
     this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
-    this.background = new Background(this.ctx,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
-    this.ruleAuxiliary = new RuleAuxiliary(this.ctx,this.ruleStrokeStyle,this.ruleGap,this.ruleUnitLen);
-    this.border = new Border(this.ctx,this.borderStyle,this.borderWidth);
     this.loadEvent();
     this.draw();
   }
@@ -455,17 +462,11 @@ export default class Board{
     this.doWriting(pointsGroup);
     this.debounceBindOnChange();
   }
-  drawToolShape(){
-    const toolShapeOffsceen = this.toolShape.draw();
-    this.ctx.drawImage(toolShapeOffsceen!,0,0);
-  }
   draw(){
     this.ctx.clearRect(0,0,this.width,this.height);
-    this.loadBackground(this.ctx);
+    this.loadBackground();
     this.loadRule();
-    this.loadBorder();
     this.doWriting(this.pointsGroup);
-    this.drawToolShape();
     this.drawEraser();
     // this.drawEagleEye();
     this.debounceBindOnChange();
@@ -663,7 +664,6 @@ export default class Board{
             this.toolShapeAngle += deltaAngle;
             this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
           }
-          this.draw();
         }else{
           let deltaX = 0;
           let deltaY = 0;
@@ -757,13 +757,13 @@ export default class Board{
       const coords = getPageCoords([{pageX,pageY}]);
       handleWriteEnd(coords);
     }
-    const canvas = this.canvas;
+    const container = this.container;
     if(isTouchDevice()){
-      canvas.addEventListener("touchstart", handleTouchStart, { passive: true });
-      canvas.addEventListener("touchmove", handleTouchMove, { passive: true });
-      canvas.addEventListener("touchend", handleTouchEnd, { passive: true });
+      container.addEventListener("touchstart", handleTouchStart, { passive: true });
+      container.addEventListener("touchmove", handleTouchMove, { passive: true });
+      container.addEventListener("touchend", handleTouchEnd, { passive: true });
     }else{
-      canvas.addEventListener("mousedown", handleMouseStart);
+      container.addEventListener("mousedown", handleMouseStart);
       self.addEventListener("mousemove", handleMouseMove, { passive: true });
       self.addEventListener("mouseup", handleMouseEnd, { passive: true });
     }
@@ -965,69 +965,31 @@ export default class Board{
       })
     })
   }
-  private loadBackground(ctx:CanvasRenderingContext2D,offset=true){
+  private loadBackground(ctx:CanvasRenderingContext2D|null = null,offset=true){
     if(this.enableBG){
       let coordX = 0;
       let coordY = 0;
       let background:Background;
-      if(offset){
+      if(!ctx){
         const offsetX = negativeRemainder(this.worldOffsetX,this.gridGap * 2);
         const offsetY = negativeRemainder(this.worldOffsetY,this.gridGap * 2);
         coordX = -offsetX;
         coordY = -offsetY;
         background = this.background;
       }else{
-        background = new Background(ctx,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
+        const canvas = ctx.canvas;
+        const {width,height} = canvas;
+        background = new Background(width,height,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
       }
-      const backgroundOffsceen = background.draw(coordX,coordY,this.bgPattern);
-      ctx.drawImage(backgroundOffsceen!,0,0);
-    }
-  }
-  // private drawEagleEye(){
-  //   if(!this.enableEagleEyeMode){
-  //     return;
-  //   }
-  //   const ctx = this.ctx;
-  //   const width = this.width;
-  //   const height = this.height;
-  //   const maxW = width/3;
-  //   const maxH = height/3;
-  //   const dx = width - maxW;
-  //   const globalAlpha = 1;
-  //   ctx.save();
-  //   ctx.globalAlpha = globalAlpha;
-  //   ctx.fillStyle = 'rgba(0,0,0,.3)';
-  //   ctx.strokeStyle = 'rgba(0,0,0,1)';
-  //   ctx.fillRect(dx,0,maxW,maxH);
-  //   ctx.strokeRect(dx,0,maxW,maxH);
-  //   ctx.restore();
-  //   if(this.minX!==undefined){
-  //     self.requestIdleCallback(()=>{
-  //       ctx.save();
-  //       ctx.globalAlpha = globalAlpha;
-  //       const w = this.maxX - this.minX;
-  //       const h = this.maxY - this.minY;
-  //       const rate = Math.min(maxW/w,maxH/h);
-  //       this.eagleEyeOffscreen = new OffscreenCanvas(w, h);
-  //       this.eagleEyeOffscreenCtx = this.eagleEyeOffscreen.getContext('2d')!;
-  //       this.drawPureCanvas(this.eagleEyeOffscreenCtx);
-  //       ctx.translate(dx,0);
-  //       ctx.scale(rate,rate);
-  //       this.ctx.drawImage(this.eagleEyeOffscreen,0,0);
-  //       ctx.restore();
-  //     })
-  //   }
-  // }
-  private loadBorder(){
-    if(this.showBorder){
-      const borderOffsceen = this.border.draw();
-      this.ctx.drawImage(borderOffsceen!,0,0);
+      background.draw(coordX,coordY,this.bgPattern);
+      if(ctx){
+        ctx.drawImage(background.canvas,0,0);
+      }
     }
   }
   private loadRule(){
     if(this.rule){
-      const ruleAuxiliaryOffsceen = this.ruleAuxiliary.draw(this.worldOffsetX,this.worldOffsetY);
-      this.ctx.drawImage(ruleAuxiliaryOffsceen!,0,0);
+      this.ruleAuxiliary.draw(this.worldOffsetX,this.worldOffsetY);
     }
   }
 }

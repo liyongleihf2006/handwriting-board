@@ -1,27 +1,22 @@
-
+import { generateCanvas } from '../utils';
 export default class Border{
-  width:number;
-  height:number;
-
-  offscreen!:OffscreenCanvas | null;
+  canvas:HTMLCanvasElement;
+  ctx:CanvasRenderingContext2D;
 
   constructor(
-    public ctx:CanvasRenderingContext2D,
+    public width:number,
+    public height:number,
     public borderStyle:string,
     public borderWidth:number
   ){
-    const canvas = ctx.canvas;
-    this.width = canvas.width;
-    this.height = canvas.height;
+    this.canvas = generateCanvas(width,height);
+    this.ctx = this.canvas.getContext('2d')!;
+    this.draw();
   }
-  draw(){
-    if(!this.offscreen){
-      this.offscreen = new OffscreenCanvas(this.width,this.height);
-      const ctx = this.offscreen.getContext('2d')!;
-      ctx.strokeStyle = this.borderStyle;
-      ctx.lineWidth = this.borderWidth;
-      ctx.strokeRect(0,0,this.width,this.height);
-    }
-    return this.offscreen;
+  private draw(){
+    const ctx = this.ctx;
+    ctx.strokeStyle = this.borderStyle;
+    ctx.lineWidth = this.borderWidth;
+    ctx.strokeRect(0,0,this.width,this.height);
   }
 }
