@@ -720,7 +720,9 @@ export default class Board{
         }else if(this.scrollDirection === ScrollDirection.Y){
           speedY = deltaY/deltaTime ;
         }
-        scrollDecay(speedX,speedY);
+        if(!isRulerDoubleTouch){
+          scrollDecay(speedX,speedY);
+        }
       } else if (isSingleTouch){
         if(!hasMoved){
           handleWriteMove(coords);
