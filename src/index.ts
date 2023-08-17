@@ -7,6 +7,7 @@ import Background from './component/Background';
 import RuleAuxiliary from './component/RuleAuxiliary';
 import Border from './component/Border';
 import Writing from './component/Writing';
+import Eraser from './component/Eraser';
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
@@ -181,6 +182,7 @@ export default class Board{
   private ruleAuxiliary:RuleAuxiliary;
   private border:Border;
   private writing:Writing;
+  private eraser:Eraser;
 
   coherentDistance = 30;
   scrollRange:ScrollRange;
@@ -292,6 +294,8 @@ export default class Board{
     this.toolShapeY = 100;
     this.toolShapeAngle = 15;
     this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
+    this.eraser = new Eraser(this.width,this.height);
+    this.container.append(this.eraser.canvas);
     this.loadEvent();
     this.draw();
   }
@@ -779,7 +783,7 @@ export default class Board{
   }
   private drawEraser(){
     if(this.cleanState && this.cleanPress){
-      this.writing.drawEraser(this.cleanX as number,this.cleanY as number,this.cleanR as number);
+      this.eraser.draw(this.cleanX as number,this.cleanY as number,this.cleanR as number);
     }
   }
   private doClean(writeEndX:number,writeEndY:number){

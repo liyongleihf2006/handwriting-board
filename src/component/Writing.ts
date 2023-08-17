@@ -43,15 +43,4 @@ export default class Writing{
       this.ctx.restore();
     })
   }
-  drawEraser(cleanX:number,cleanY:number,cleanR:number){
-    this.ctx.save();
-    this.ctx.beginPath();
-    this.ctx.fillStyle = 'rgba(0,0,0,.1)';
-    this.ctx.strokeStyle = 'rgba(0,0,0,.15)';
-    this.ctx.arc(cleanX,cleanY,cleanR as number,0,Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.stroke();
-    this.ctx.restore();
-    this.ctx.beginPath();
-  }
 }
