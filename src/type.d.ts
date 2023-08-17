@@ -22,7 +22,8 @@ export type Options = {
   voice?:number,
   color?:string,
   stack?:boolean,
-  cleanR?:number,
+  cleanWidth?:number,
+  cleanHeight?:number,
   moveCountTotal?:number,
   writeLocked?:boolean,
   dragLocked?:boolean,
@@ -43,3 +44,9 @@ export type StackType = {
 }
 export type ContainerOffset = ()=>({x:number,y:number});
 export type Coords = {pageX:number,pageY:number};
+export type StoreItem = {
+  worldOffsetX:number,
+  worldOffsetY:number,
+  imageData:ImageData
+}
+export type Store = StoreItem[];

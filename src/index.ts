@@ -1,7 +1,7 @@
 import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange} from './type';
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
-import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder,generateCanvas} from './utils'
+import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils'
 import ToolShape from './component/ToolShape';
 import Background from './component/Background';
 import RuleAuxiliary from './component/RuleAuxiliary';
@@ -93,9 +93,13 @@ const defaultColor = 'rgb(0,0,0)';
  */
 const defaultStack = true;
 /**
- * 橡皮擦除的半径
+ * 橡皮擦除的宽度
  */
-const defaultCleanR = 20;
+const defaultCleanWidth = 20;
+/**
+ * 橡皮擦除的高度
+ */
+const defaultCleanHeight = 20;
 /**
  * 滚动的时候执行的次数
  */
@@ -142,7 +146,8 @@ const defaultOptions = {
   voice:defaultVoice,
   color:defaultColor,
   stack:defaultStack,
-  cleanR:defaultCleanR,
+  cleanWidth:defaultCleanWidth,
+  cleanHeight:defaultCleanHeight,
   moveCountTotal:defaultMoveCountTotal,
   writeLocked:defaultWriteLocked,
   dragLocked:defaultDragLocked,
@@ -204,7 +209,8 @@ export default class Board{
   ruleStrokeStyle:string;
   voice:number;
   color:string;
-  cleanR:number;
+  cleanWidth:number;
+  cleanHeight:number;
   stack:boolean;
   moveCountTotal:number;
   writeLocked:boolean;
@@ -236,7 +242,8 @@ export default class Board{
     this.voice = options.voice  ?? defaultVoice;
     this.color = options.color ?? defaultColor;
     this.stack = options.stack ?? defaultStack;
-    this.cleanR = options.cleanR ?? defaultCleanR;
+    this.cleanWidth = options.cleanWidth ?? defaultCleanWidth;
+    this.cleanHeight = options.cleanHeight ?? defaultCleanHeight;
     this.moveCountTotal = options.moveCountTotal ?? defaultMoveCountTotal;
     this.writeLocked = options.writeLocked ?? defaultWriteLocked;
     this.dragLocked = options.dragLocked ?? defaultDragLocked;
@@ -338,6 +345,8 @@ export default class Board{
     if(typeof maxY === 'number'){
       this.worldOffsetY = Math.min(maxY,this.worldOffsetY);
     }
+    this.worldOffsetX = Math.round(this.worldOffsetX);
+    this.worldOffsetY = Math.round(this.worldOffsetY);
   }
   private doMove(preOffsetX:number,preOffsetY:number,i=0){
     if(this.scrollDirection === ScrollDirection.ALL){
@@ -513,7 +522,7 @@ export default class Board{
         this.cleanX = writeEndX;
         this.cleanY = writeEndY;
         this.cleanPress = true;
-        this.draw();
+        this.drawEraser();
       }
     }
     const handleTouchStart = (event:TouchEvent) => {
@@ -619,7 +628,7 @@ export default class Board{
         this.cleanX = writeEndX;
         this.cleanY = writeEndY;
         this.doClean(writeEndX,writeEndY);
-        this.draw();
+        this.drawEraser();
       }else{
         if(this.activateToolShape){
           const {nearestPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
@@ -731,6 +740,7 @@ export default class Board{
         if(!hasMoved){
           handleWriteMove(coords);
         }
+        this.writing.pushImageData();
         if(this.stack && hasWrited){
           this.stackObj.saveState({
             worldOffsetX:this.worldOffsetX,
@@ -783,65 +793,11 @@ export default class Board{
   }
   private drawEraser(){
     if(this.cleanState && this.cleanPress){
-      this.eraser.draw(this.cleanX as number,this.cleanY as number,this.cleanR as number);
+      this.eraser.draw(this.cleanX as number,this.cleanY as number,this.cleanWidth as number,this.cleanHeight as number);
     }
   }
   private doClean(writeEndX:number,writeEndY:number){
-    const x0 = writeEndX + this.worldOffsetX;
-    const y0 = writeEndY + this.worldOffsetY;
-    this.pointsGroup.forEach(group=>{
-      const corners = group.corners;
-      for(let i = corners.length - 1;i>=0;i--){
-        const [[x1,y1],[x2,y2],[x4,y4],[x3,y3]] = corners[i];
-        if(this.isCircleIntersectRect(x0,y0,this.cleanR as number,x1,y1,x2,y2,x3,y3,x4,y4)){
-          corners.splice(i,1);
-        }
-      }
-    })
-  }
-  private isCircleIntersectRect(x0: number, y0: number, r: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number): boolean {
-    // 检查圆心是否在矩形内部
-    if (x0 >= x1 && x0 <= x3 && y0 >= y1 && y0 <= y3) {
-      return true;
-    }
-  
-    // 检查矩形的四条边是否与圆相交
-    const dist = (x: number, y: number) => Math.sqrt((x - x0) ** 2 + (y - y0) ** 2);
-  
-    const edges: [number, number, number, number][] = [
-      [x1, y1, x2, y2],
-      [x2, y2, x4, y4],
-      [x4, y4, x3, y3],
-      [x3, y3, x1, y1]
-    ];
-  
-    for (let i = 0; i < edges.length; i++) {
-      const [ex1, ey1, ex2, ey2] = edges[i];
-      const d1 = dist(ex1, ey1);
-      const d2 = dist(ex2, ey2);
-  
-      if (d1 <= r || d2 <= r) {
-        return true;
-      }
-  
-      const dx = ex2 - ex1;
-      const dy = ey2 - ey1;
-      const t = ((x0 - ex1) * dx + (y0 - ey1) * dy) / (dx ** 2 + dy ** 2);
-  
-      if (t < 0 || t > 1) {
-        continue;
-      }
-  
-      const cx = ex1 + t * dx;
-      const cy = ey1 + t * dy;
-      const dt = dist(cx, cy);
-  
-      if (dt <= r) {
-        return true;
-      }
-    }
-  
-    return false;
+    this.writing.doClean(writeEndX,writeEndY,this.cleanWidth,this.cleanHeight);
   }
   private getCornerCoordinate(a:number,b:number,c:number,d:number,x:number,y:number):[[number,number],[number,number]]{
     return [
