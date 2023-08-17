@@ -50,3 +50,4 @@ export type StoreItem = {
   imageData:ImageData
 }
 export type Store = StoreItem[];
+export type Points = [[number, number], [number, number], [number, number], [number, number]];

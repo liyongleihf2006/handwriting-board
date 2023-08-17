@@ -1,13 +1,9 @@
-import type {StoreItem,Store} from '../type';
-import { PointsGroup } from "../type";
+import type {Store, Points} from '../type';
 
 import { generateCanvas } from '../utils';
 export default class Writing{
 
   store:Store = [];
-
-  worldOffsetX!:number;
-  worldOffsetY!:number;
 
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
@@ -19,52 +15,46 @@ export default class Writing{
     this.canvas = generateCanvas(width,height);
     this.ctx = this.canvas.getContext('2d',{ willReadFrequently: true })!;
   }
-  writing(pointsGroup:PointsGroup,worldOffsetX:number,worldOffsetY:number,needClean = true){
-    this.worldOffsetX = worldOffsetX;
-    this.worldOffsetY = worldOffsetY;
-    if(needClean){
-      this.ctx.clearRect(0,0,this.width,this.height);
-      this.putImageData(this.worldOffsetX,this.worldOffsetY);
-    }else{
-      pointsGroup.forEach(({corners,fillStyle})=>{
-        this.ctx.save();
-        this.ctx.fillStyle = fillStyle;
-        this.ctx.beginPath();
-        corners.forEach(([[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]],i)=>{
-          const x11 = wx11 - this.worldOffsetX;
-          const y11 = wy11 - this.worldOffsetY;
-          const x12 = wx12 - this.worldOffsetX;
-          const y12 = wy12 - this.worldOffsetY;
-          const x21 = wx21 - this.worldOffsetX;
-          const y21 = wy21 - this.worldOffsetY;
-          const x22 = wx22 - this.worldOffsetX;
-          const y22 = wy22 - this.worldOffsetY;
-          this.ctx.moveTo(x11,y11);
-          this.ctx.lineTo(x12,y12);
-          this.ctx.lineTo(x22,y22);
-          this.ctx.lineTo(x21,y21);
-        })
-        this.ctx.fill();
-        this.ctx.restore();
-      })
-    }
+  refresh(worldOffsetX:number,worldOffsetY:number){
+    this.ctx.clearRect(0,0,this.width,this.height);
+    this.putImageData(worldOffsetX,worldOffsetY);
+  }
+  writing(points:Points,color:string){
+    this.ctx.save();
+    this.ctx.fillStyle = color;
+    this.ctx.beginPath();
+    const [[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]] = points;
+    const x11 = wx11;
+    const y11 = wy11;
+    const x12 = wx12;
+    const y12 = wy12;
+    const x21 = wx21;
+    const y21 = wy21;
+    const x22 = wx22;
+    const y22 = wy22;
+    this.ctx.moveTo(x11,y11);
+    this.ctx.lineTo(x12,y12);
+    this.ctx.lineTo(x22,y22);
+    this.ctx.lineTo(x21,y21);
+    this.ctx.fill();
+    this.ctx.restore();
   }
   doClean(x:number,y:number,width:number,height:number){
     this.ctx.clearRect(x,y,width,height);
   }
-  pushImageData(){
+  pushImageData(worldOffsetX:number,worldOffsetY:number){
     const imageData = this.ctx.getImageData(0,0,this.width,this.height);
     const store = this.store;
     const len = store.length;
     for(let i = len - 1;i>=0;i--){
       const storeItem = store[i];
-      if(storeItem.worldOffsetX === this.worldOffsetX && storeItem.worldOffsetY === this.worldOffsetY){
+      if(storeItem.worldOffsetX === worldOffsetX && storeItem.worldOffsetY === worldOffsetY){
         store.splice(i,1);
       }
     }
     store.push({
-      worldOffsetX:this.worldOffsetX,
-      worldOffsetY:this.worldOffsetY,
+      worldOffsetX,
+      worldOffsetY,
       imageData
     })
   }

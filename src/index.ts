@@ -1,4 +1,4 @@
-import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange} from './type';
+import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange, Points} from './type';
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
 import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils'
@@ -156,8 +156,6 @@ const defaultOptions = {
   borderWidth:defaultBorderWidth
 }
 export default class Board{
-  // private eagleEyeOffscreen!:OffscreenCanvas;
-  // private eagleEyeOffscreenCtx!:OffscreenCanvasRenderingContext2D;
   private width:number;
   private height:number;
   private worldOffsetX = 0;
@@ -177,6 +175,7 @@ export default class Board{
   private maxY!:number;
   private moveT = false;
   private debounceBindOnChange:Function;
+  private prevPoints!:Points|null;
   
   private toolShape:ToolShape;
   private activateToolShape = false;
@@ -468,14 +467,10 @@ export default class Board{
   unclean(){
     this.cleanState = false;
   }
-  private singleDraw(pointsGroup:PointsGroup){
-    this.doWriting(pointsGroup,false);
-    this.debounceBindOnChange();
-  }
   draw(){
     this.loadBackground();
     this.loadRule();
-    this.doWriting(this.pointsGroup);
+    this.writing.refresh(this.worldOffsetX,this.worldOffsetY);
     this.drawEraser();
     this.debounceBindOnChange();
   }
@@ -601,18 +596,14 @@ export default class Board{
     }
     const doInsertPoint = (writeStartX:number,writeStartY:number,writeEndX:number,writeEndY:number) => {
       if(needPushPoints){
-        this.pointsGroup.push({
-          corners:[],
-          fillStyle:this.color
-        });
+        this.prevPoints = null;
         needPushPoints = false;
       }
       const points = this.pushPoints(writeStartX,writeStartY,writeEndX,writeEndY,writeStartTime,writeEndTime);
       if(points){
-        this.singleDraw([{
-          corners:[points],
-          fillStyle:this.color
-        }])
+        this.prevPoints = points;
+        this.doWriting(points);
+        this.debounceBindOnChange();
       }
     }
     const handleWriteMove = (coords:Coords) => {
@@ -740,7 +731,7 @@ export default class Board{
         if(!hasMoved){
           handleWriteMove(coords);
         }
-        this.writing.pushImageData();
+        this.writing.pushImageData(this.worldOffsetX,this.worldOffsetY);
         if(this.stack && hasWrited){
           this.stackObj.saveState({
             worldOffsetX:this.worldOffsetX,
@@ -814,10 +805,10 @@ export default class Board{
     return [[x11,y11],[x12,y12],[x21,y21],[x22,y22]];
   }
   private pushPoints(writeStartX:number,writeStartY:number,writeEndX:number,writeEndY:number,writeStartTime:number,writeEndTime:number){
-    const x1 = writeStartX + this.worldOffsetX;
-    const y1 = writeStartY + this.worldOffsetY;
-    const x2 = writeEndX + this.worldOffsetX;
-    const y2 = writeEndY + this.worldOffsetY;
+    const x1 = writeStartX;
+    const y1 = writeStartY;
+    const x2 = writeEndX;
+    const y2 = writeEndY;
     const distance = ((y2-y1)**2 + (x2-x1)**2)**0.5;
     const originD = (writeEndTime - writeStartTime)/distance * this.voice;
     if(!isNaN(originD)){
@@ -840,17 +831,12 @@ export default class Board{
         return isNaN(xy);
       })
       if(!hasNaN){
-        const corners  = this.pointsGroup[this.pointsGroup.length-1].corners;
-        if(corners.length){
-          const lastPoints = corners[corners.length - 1];
-          points[0] = lastPoints[2];
-          points[1] = lastPoints[3];
+        if(this.prevPoints){
+          points[0] = this.prevPoints[2];
+          points[1] = this.prevPoints[3];
         }
-        corners.push(points);
         return points;
       }else if(!distance){
-        const corners  = this.pointsGroup[this.pointsGroup.length-1].corners;
-        type Points = [[number, number], [number, number], [number, number], [number, number]];
         let d = this.voice;
         if(this.writeModel === WriteModel.WRITE){
           let rate = (writeEndTime - writeStartTime)/250;
@@ -867,13 +853,12 @@ export default class Board{
           [x1 + d,y1 - d],
           [x1 + d,y1 + d]
         ];
-        corners.push(points);
         return points;
       }
     }
   }
-  private doWriting(pointsGroup:PointsGroup,needClean = true){
-    this.writing.writing(pointsGroup,this.worldOffsetX,this.worldOffsetY,needClean);
+  private doWriting(points:Points){
+    this.writing.writing(points,this.color);
   }
   private calcSize(){
     this.pointsGroup.forEach(({corners},idx)=>{
