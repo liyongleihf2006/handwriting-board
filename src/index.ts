@@ -6,6 +6,7 @@ import ToolShape from './component/ToolShape';
 import Background from './component/Background';
 import RuleAuxiliary from './component/RuleAuxiliary';
 import Border from './component/Border';
+import Writing from './component/Writing';
 export {WriteModel};
 function isTouchDevice() {
   return 'ontouchstart' in self;
@@ -179,6 +180,7 @@ export default class Board{
   private background:Background;
   private ruleAuxiliary:RuleAuxiliary;
   private border:Border;
+  private writing:Writing;
 
   coherentDistance = 30;
   scrollRange:ScrollRange;
@@ -210,9 +212,6 @@ export default class Board{
   borderWidth:number;
   containerOffset:ContainerOffset;
   onChange:OnChange|undefined;
-
-  ctx!:CanvasRenderingContext2D;
-
   
   constructor(public container:HTMLDivElement,options:Options = defaultOptions){
     this.scrollRange = options.scrollRange ?? defaultScrollRange;
@@ -285,10 +284,8 @@ export default class Board{
     this.container.append(this.ruleAuxiliary.canvas);
     this.border = new Border(this.width,this.height,this.borderStyle,this.borderWidth);
     this.container.append(this.border.canvas);
-
-    const canvas = generateCanvas(this.width,this.height);
-    this.container.append(canvas);
-    this.ctx = canvas.getContext('2d')!;
+    this.writing = new Writing(this.width,this.height);
+    this.container.append(this.writing.canvas);
     this.toolShape = new ToolShape(this.width,this.height,this.voice);
     this.container.append(this.toolShape.canvas);
     this.toolShapeX = 100;
@@ -459,16 +456,14 @@ export default class Board{
     this.cleanState = false;
   }
   private singleDraw(pointsGroup:PointsGroup){
-    this.doWriting(pointsGroup);
+    this.doWriting(pointsGroup,false);
     this.debounceBindOnChange();
   }
   draw(){
-    this.ctx.clearRect(0,0,this.width,this.height);
     this.loadBackground();
     this.loadRule();
     this.doWriting(this.pointsGroup);
     this.drawEraser();
-    // this.drawEagleEye();
     this.debounceBindOnChange();
   }
   private loadEvent(){
@@ -784,15 +779,7 @@ export default class Board{
   }
   private drawEraser(){
     if(this.cleanState && this.cleanPress){
-      this.ctx.save();
-      this.ctx.beginPath();
-      this.ctx.fillStyle = 'rgba(0,0,0,.1)';
-      this.ctx.strokeStyle = 'rgba(0,0,0,.15)';
-      this.ctx.arc(this.cleanX as number,this.cleanY as number,this.cleanR as number,0,Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.stroke();
-      this.ctx.restore();
-      this.ctx.beginPath();
+      this.writing.drawEraser(this.cleanX as number,this.cleanY as number,this.cleanR as number);
     }
   }
   private doClean(writeEndX:number,writeEndY:number){
@@ -925,28 +912,8 @@ export default class Board{
       }
     }
   }
-  private doWriting(pointsGroup:PointsGroup){
-    pointsGroup.forEach(({corners,fillStyle},idx)=>{
-      this.ctx.save();
-      this.ctx.fillStyle = fillStyle;
-      this.ctx.beginPath();
-      corners.forEach(([[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]],i)=>{
-        const x11 = wx11 - this.worldOffsetX;
-        const y11 = wy11 - this.worldOffsetY;
-        const x12 = wx12 - this.worldOffsetX;
-        const y12 = wy12 - this.worldOffsetY;
-        const x21 = wx21 - this.worldOffsetX;
-        const y21 = wy21 - this.worldOffsetY;
-        const x22 = wx22 - this.worldOffsetX;
-        const y22 = wy22 - this.worldOffsetY;
-        this.ctx.moveTo(x11,y11);
-        this.ctx.lineTo(x12,y12);
-        this.ctx.lineTo(x22,y22);
-        this.ctx.lineTo(x21,y21);
-      })
-      this.ctx.fill();
-      this.ctx.restore();
-    })
+  private doWriting(pointsGroup:PointsGroup,needClean = true){
+    this.writing.writing(pointsGroup,this.worldOffsetX,this.worldOffsetY,needClean);
   }
   private calcSize(){
     this.pointsGroup.forEach(({corners},idx)=>{
