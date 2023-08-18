@@ -224,7 +224,6 @@ export default class Board{
     this.scrollRange = options.scrollRange ?? defaultScrollRange;
     this.scrollDirection = options.scrollDirection ?? defaultScrollDirection;
     this.bgPattern = options.bgPattern ?? defaultBGPattern;
-    // this.enableEagleEyeMode = options.enableEagleEyeMode ?? defaultEnableEagleEyeMode;
     this.writeModel = options.writeModel ?? defaultWriteModel;
     this.enableBG = options.enableBG ?? defaultEnableBG;
     this.gridGap = options.gridGap ?? defaultGridGap;
@@ -305,10 +304,6 @@ export default class Board{
     this.loadEvent();
     this.draw();
   }
-  // setEnableEagleEyeMode(enable:boolean){
-  //   this.enableEagleEyeMode = enable;
-  //   this.draw();
-  // }
   setVoice(voice = 1){
     this.voice = voice;
     this.d = voice;
@@ -427,32 +422,16 @@ export default class Board{
     })
   }
   exportAsCanvas(){
-    const canvas = document.createElement('canvas') as HTMLCanvasElement;
-    this.calcSize();
-    if(this.minX!==undefined){
-      canvas.width = this.maxX - this.minX;
-      canvas.height = this.maxY - this.minY;
-      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-      this.drawPureCanvas(ctx);
-    }else{
-      canvas.width = 0;
-      canvas.height = 0;
-    }
-    return canvas;
+    return this.writing.getWholeCanvas();
   }
   exportAsPaperCanvas(){
+    const imageCanvas = this.writing.getPaperCanvas();
     const canvas = document.createElement('canvas') as HTMLCanvasElement;
-    this.calcSize();
-    canvas.width = this.width;
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-    if(this.minX!==undefined){
-      canvas.height = Math.ceil(this.maxY/this.height) * this.height;
-      this.loadBackground(ctx,false);
-      this.drawPureCanvas(ctx,false);
-    }else{
-      canvas.height = this.height;
-      this.loadBackground(ctx,false);
-    }
+    canvas.width = imageCanvas.width;
+    canvas.height = imageCanvas.height;
+    const ctx = canvas.getContext('2d')!;
+    this.loadBackground(ctx,false);
+    ctx.drawImage(imageCanvas,0,0);
     return canvas;
   }
   undo(){
