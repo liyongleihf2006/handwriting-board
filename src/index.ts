@@ -427,7 +427,9 @@ export default class Board{
     canvas.width = imageCanvas.width;
     canvas.height = imageCanvas.height;
     const ctx = canvas.getContext('2d')!;
-    this.loadBackground(ctx,false);
+    if(this.enableBG){
+      this.loadBackground(ctx,false);
+    }
     ctx.drawImage(imageCanvas,0,0);
     return canvas;
   }
@@ -758,6 +760,7 @@ export default class Board{
     if(this.cleanState && this.cleanPress){
       this.eraser.draw(this.cleanX as number,this.cleanY as number,this.cleanWidth as number,this.cleanHeight as number);
     }
+    this.eraser.canvas.style.opacity = (this.cleanState && this.cleanPress)?'1':'0';
   }
   private doClean(writeEndX:number,writeEndY:number){
     this.writing.doClean(writeEndX - this.cleanWidth/2,writeEndY - this.cleanHeight/2,this.cleanWidth,this.cleanHeight);
@@ -850,31 +853,33 @@ export default class Board{
     })
   }
   private loadBackground(ctx:CanvasRenderingContext2D|null = null,offset=true){
+    let coordX = 0;
+    let coordY = 0;
+    let background:Background;
+    if(!ctx){
+      const offsetX = negativeRemainder(this.worldOffsetX,this.gridGap * 2);
+      const offsetY = negativeRemainder(this.worldOffsetY,this.gridGap * 2);
+      coordX = -offsetX;
+      coordY = -offsetY;
+      background = this.background;
+    }else{
+      const canvas = ctx.canvas;
+      const {width,height} = canvas;
+      background = new Background(width,height,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
+    }
     if(this.enableBG){
-      let coordX = 0;
-      let coordY = 0;
-      let background:Background;
-      if(!ctx){
-        const offsetX = negativeRemainder(this.worldOffsetX,this.gridGap * 2);
-        const offsetY = negativeRemainder(this.worldOffsetY,this.gridGap * 2);
-        coordX = -offsetX;
-        coordY = -offsetY;
-        background = this.background;
-      }else{
-        const canvas = ctx.canvas;
-        const {width,height} = canvas;
-        background = new Background(width,height,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
-      }
       background.draw(coordX,coordY,this.bgPattern);
       if(ctx){
         ctx.drawImage(background.canvas,0,0);
       }
     }
+    background.canvas.style.opacity = this.enableBG?'1':'0';
   }
   private loadRule(){
     if(this.rule){
       this.ruleAuxiliary.draw(this.worldOffsetX,this.worldOffsetY);
     }
+    this.ruleAuxiliary.canvas.style.opacity = this.rule?'1':'0';
   }
 }
 export { Board }
