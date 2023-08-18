@@ -1,4 +1,4 @@
-import {Options,PointsGroup,StackType,ContainerOffset,Coords, OnChange, ScrollRange, Points} from './type';
+import {Options,PointsGroup,Store,ContainerOffset,Coords, OnChange, ScrollRange, Points} from './type';
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection} from './enum';
 import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils'
@@ -258,32 +258,34 @@ export default class Board{
     });
     this.onChange = options.onChange;
     this.debounceBindOnChange = debounce(this.triggerOnChange,500);
+    const rect = container.getBoundingClientRect();
+    this.width = rect.width;
+    this.height = rect.height;
     if(this.stack){
-      this.stackObj = new Stack();
-      this.stackObj.restoreState = (state:StackType)=>{
+      this.stackObj = new Stack(this.width,this.height);
+      this.stackObj.restoreState = (store:Store)=>{
+        const storeLen = store.length;
+        const lastStoreItem = store[storeLen-1];
         const prevWorldOffsetX = this.worldOffsetX;
         const prevWorldOffsetY = this.worldOffsetY;
-        const targetWorldOffsetX = state.worldOffsetX;
-        const targetWorldOffsetY = state.worldOffsetY;
+        const targetWorldOffsetX = lastStoreItem.worldOffsetX;
+        const targetWorldOffsetY = lastStoreItem.worldOffsetY;
         const offsetX = targetWorldOffsetX - prevWorldOffsetX;
         const offsetY = targetWorldOffsetY - prevWorldOffsetY;
         if(!offsetX&&!offsetY){
-          this.worldOffsetX = state.worldOffsetX;
-          this.worldOffsetY = state.worldOffsetY;
-          this.pointsGroup = state.pointGroup;
+          this.worldOffsetX = lastStoreItem.worldOffsetX;
+          this.worldOffsetY = lastStoreItem.worldOffsetY;
+          this.writing.store = store;
           this.draw();
         }else{
           const preOffsetX = offsetX/this.moveCountTotal;
           const preOffsetY = offsetY/this.moveCountTotal;
-          this.pointsGroup = state.pointGroup;
+          this.writing.store = store;
           this.moveT = true;
           this.doMove(preOffsetX,preOffsetY);
         }
       };
     }
-    const rect = container.getBoundingClientRect();
-    this.width = rect.width;
-    this.height = rect.height;
     
     this.background = new Background(this.width,this.height,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
     this.container.append(this.background.canvas);
@@ -372,13 +374,9 @@ export default class Board{
   clear(){
     this.worldOffsetX = 0;
     this.worldOffsetY = 0;
-    this.pointsGroup = [];
+    this.writing.clear();
     this.draw();
-    this.stackObj.saveState({
-      worldOffsetX:this.worldOffsetX,
-      worldOffsetY:this.worldOffsetY,
-      pointGroup:this.pointsGroup
-    });
+    this.stackObj.saveState([...this.writing.store]);
   }
   triggerOnChange(){
     window.requestIdleCallback(()=>{
@@ -712,11 +710,7 @@ export default class Board{
         }
         this.writing.pushImageData(this.worldOffsetX,this.worldOffsetY);
         if(this.stack && hasWrited){
-          this.stackObj.saveState({
-            worldOffsetX:this.worldOffsetX,
-            worldOffsetY:this.worldOffsetY,
-            pointGroup:this.pointsGroup
-          });
+          this.stackObj.saveState(this.writing.store);
         }
       }
       if(this.cleanState){

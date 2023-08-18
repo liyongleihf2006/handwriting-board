@@ -1,50 +1,35 @@
-import type {StackType} from './type';
+import type {Store} from './type';
 
 export class Stack {
-  undoStack:StackType[] = [];
-  redoStack:StackType[] = [];
-  restoreState:(state:StackType)=>void = ()=>undefined;
-  saveState(state:StackType) {
-    this.undoStack.push(deepCopy(state));
+  undoStack:Store[] = [];
+  redoStack:Store[] = [];
+  constructor(public width:number,public height:number){}
+  restoreState:(store:Store)=>void = ()=>undefined;
+  saveState(store:Store) {
+    this.undoStack.push([...store]);
     this.redoStack.length = 0;
   }
   undo() {
     if (this.undoStack.length > 0) {
-      const lastState = this.undoStack.pop() as StackType;
+      const lastState = this.undoStack.pop() as Store;
       this.redoStack.push(lastState);
-      const previousState = this.undoStack[this.undoStack.length - 1]||{worldOffsetX:0,worldOffsetY:0,pointGroup:[]};
+      let previousState = this.undoStack[this.undoStack.length - 1];
+      if(!previousState){
+        const data = new Uint8ClampedArray(this.width * 4 * this.height);
+        const imageData = new ImageData(data,this.width,this.height);
+        previousState = [{worldOffsetX:0,worldOffsetY:0,imageData}];
+      }
       this.doRestoreState(previousState);
     }
   }
   redo() {
     if (this.redoStack.length > 0) {
-      const nextState = this.redoStack.pop() as StackType;
+      const nextState = this.redoStack.pop() as Store;
       this.undoStack.push(nextState);
       this.doRestoreState(nextState);
     }
   }
-  private doRestoreState(state:StackType){
-    this.restoreState(deepCopy(state));
+  private doRestoreState(store:Store){
+    this.restoreState([...store]);
   }
-}
-function deepCopy(obj:any, hash = new WeakMap()) {
-  if (Object(obj) !== obj) {  // primitive types
-    return obj;
-  }
-
-  if (hash.has(obj)) {  // handle circular reference
-    return hash.get(obj);
-  }
-
-  const result:Record<string,any> = Array.isArray(obj) ? [] : {};
-  hash.set(obj, result);  // add to the hash
-  Object.keys(obj).forEach(key => {
-    if (obj[key] && typeof obj[key] === 'object') {
-      result[key] = deepCopy(obj[key], hash);  // recursively copy nested objects
-    } else {
-      result[key] = obj[key];
-    }
-  });
-
-  return result;
 }

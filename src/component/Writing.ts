@@ -39,6 +39,11 @@ export default class Writing{
     this.ctx.fill();
     this.ctx.restore();
   }
+  clear(){
+    this.store.length = 0;
+    this.doClean(0,0,this.width,this.height);
+    this.pushImageData(0,0);
+  }
   doClean(x:number,y:number,width:number,height:number){
     this.ctx.clearRect(x,y,width,height);
   }

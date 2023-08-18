@@ -37,11 +37,6 @@ export type PointsGroup = {
   corners:[[number,number],[number,number],[number,number],[number,number]][],
   fillStyle:string
 }[];
-export type StackType = {
-  pointGroup:PointsGroup,
-  worldOffsetX:number,
-  worldOffsetY:number
-}
 export type ContainerOffset = ()=>({x:number,y:number});
 export type Coords = {pageX:number,pageY:number};
 export type StoreItem = {
