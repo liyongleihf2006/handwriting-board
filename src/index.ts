@@ -481,7 +481,7 @@ export default class Board{
       isSingleTouch = true;
       needPushPoints = true;
       const {conformingToDistance,nearestPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
-      if(conformingToDistance){
+      if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
         doInsertPointByToolShape(nearestPoints);
       }else{
