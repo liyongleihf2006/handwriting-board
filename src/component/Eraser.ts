@@ -16,7 +16,7 @@ export default class Eraser{
     this.ctx.beginPath();
     this.ctx.fillStyle = 'rgba(0,0,0,.1)';
     this.ctx.strokeStyle = 'rgba(0,0,0,.15)';
-    this.ctx.rect(cleanX,cleanY,cleanWidth,cleanHeight);
+    this.ctx.rect(cleanX - cleanWidth/2,cleanY - cleanHeight/2,cleanWidth,cleanHeight);
     this.ctx.fill();
     this.ctx.stroke();
     this.ctx.restore();

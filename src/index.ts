@@ -192,7 +192,6 @@ export default class Board{
   scrollRange:ScrollRange;
   scrollDirection:ScrollDirection;
   bgPattern:BGPattern;
-  // enableEagleEyeMode:boolean;
   writeModel:WriteModel;
   enableBG:boolean;
   gridGap:number;
@@ -761,7 +760,7 @@ export default class Board{
     }
   }
   private doClean(writeEndX:number,writeEndY:number){
-    this.writing.doClean(writeEndX,writeEndY,this.cleanWidth,this.cleanHeight);
+    this.writing.doClean(writeEndX - this.cleanWidth/2,writeEndY - this.cleanHeight/2,this.cleanWidth,this.cleanHeight);
   }
   private getCornerCoordinate(a:number,b:number,c:number,d:number,x:number,y:number):[[number,number],[number,number]]{
     return [
