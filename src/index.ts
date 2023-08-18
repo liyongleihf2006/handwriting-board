@@ -171,8 +171,6 @@ export default class Board{
   private stackObj!:Stack;
   private minX!:number;
   private minY!:number;
-  private maxX!:number;
-  private maxY!:number;
   private moveT = false;
   private debounceBindOnChange:Function;
   private prevPoints!:Points|null;
@@ -187,6 +185,7 @@ export default class Board{
   private border:Border;
   private writing:Writing;
   private eraser:Eraser;
+  private eraserHasContent = false;
 
   coherentDistance = 30;
   scrollRange:ScrollRange;
@@ -709,9 +708,12 @@ export default class Board{
         if(!hasMoved){
           handleWriteMove(coords);
         }
-        this.writing.pushImageData(this.worldOffsetX,this.worldOffsetY);
-        if(this.stack && hasWrited){
-          this.stackObj.saveState(this.writing.store);
+        if(!this.cleanState || this.eraserHasContent){
+          this.eraserHasContent = false;
+          this.writing.pushImageData(this.worldOffsetX,this.worldOffsetY);
+          if(this.stack && hasWrited){
+            this.stackObj.saveState(this.writing.store);
+          }
         }
       }
       if(this.cleanState){
@@ -763,7 +765,10 @@ export default class Board{
     this.eraser.canvas.style.opacity = (this.cleanState && this.cleanPress)?'1':'0';
   }
   private doClean(writeEndX:number,writeEndY:number){
-    this.writing.doClean(writeEndX - this.cleanWidth/2,writeEndY - this.cleanHeight/2,this.cleanWidth,this.cleanHeight);
+    const hasContent = this.writing.doClean(writeEndX - this.cleanWidth/2,writeEndY - this.cleanHeight/2,this.cleanWidth,this.cleanHeight,true);
+    if(hasContent){
+      this.eraserHasContent = true;
+    }
   }
   private getCornerCoordinate(a:number,b:number,c:number,d:number,x:number,y:number):[[number,number],[number,number]]{
     return [
@@ -834,23 +839,6 @@ export default class Board{
   }
   private doWriting(points:Points){
     this.writing.writing(points,this.color);
-  }
-  private calcSize(){
-    this.pointsGroup.forEach(({corners},idx)=>{
-      corners.forEach(([[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]],i)=>{
-        if(!idx && !i){
-          this.minX = Math.min(wx11,wx12,wx21,wx22);
-          this.minY = Math.min(wy11,wy12,wy21,wy22);
-          this.maxX = Math.max(wx11,wx12,wx21,wx22);
-          this.maxY = Math.max(wy11,wy12,wy21,wy22);
-        }else{
-          this.minX = Math.min(this.minX,wx11,wx12,wx21,wx22);
-          this.minY = Math.min(this.minY,wy11,wy12,wy21,wy22);
-          this.maxX = Math.max(this.maxX,wx11,wx12,wx21,wx22);
-          this.maxY = Math.max(this.maxY,wy11,wy12,wy21,wy22);
-        }
-      })
-    })
   }
   private loadBackground(ctx:CanvasRenderingContext2D|null = null,offset=true){
     let coordX = 0;

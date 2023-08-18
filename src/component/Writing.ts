@@ -44,8 +44,21 @@ export default class Writing{
     this.doClean(0,0,this.width,this.height);
     this.pushImageData(0,0);
   }
-  doClean(x:number,y:number,width:number,height:number){
+  doClean(x:number,y:number,width:number,height:number,determineIfThereHasContent = false){
+    let hasContent = false;
+    if(determineIfThereHasContent){
+      const imageData = this.ctx.getImageData(x,y,width,height);
+      const data = imageData.data;
+      let len = data.length;
+      for(let i = 0;i<len;i+=4){
+        if(data[i+3]){
+          hasContent = true;
+          break;
+        }
+      }
+    }
     this.ctx.clearRect(x,y,width,height);
+    return hasContent;
   }
   pushImageData(worldOffsetX:number,worldOffsetY:number){
     const imageData = this.ctx.getImageData(0,0,this.width,this.height);
