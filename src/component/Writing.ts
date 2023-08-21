@@ -19,6 +19,19 @@ export default class Writing{
     this.ctx.clearRect(0,0,this.width,this.height);
     this.putImageData(worldOffsetX,worldOffsetY);
   }
+  singlePointsWriting(points:[number,number][],color:string,lineWidth:number){
+    const ctx = this.ctx;
+    const len = points.length;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for(let i = 0;i<len;i++){
+      const [x,y] = points[i];
+      ctx.rect(x,y,lineWidth,lineWidth);
+    }
+    ctx.fill();
+    ctx.restore();
+  }
   writing(points:Points,color:string){
     this.ctx.save();
     this.ctx.fillStyle = color;

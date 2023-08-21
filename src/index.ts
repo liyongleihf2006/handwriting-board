@@ -129,7 +129,6 @@ const defaultOptions = {
   scrollRange:defaultScrollRange,
   scrollDirection:defaultScrollDirection,
   bgPattern:defaultBGPattern,
-  // enableEagleEyeMode:defaultEnableEagleEyeMode,
   writeModel:defaultWriteModel,
   enableBG:defaultEnableBG,
   gridGap:defaultGridGap,
@@ -187,7 +186,6 @@ export default class Board{
   private eraser:Eraser;
   private eraserHasContent = false;
 
-  coherentDistance = 30;
   scrollRange:ScrollRange;
   scrollDirection:ScrollDirection;
   bgPattern:BGPattern;
@@ -297,7 +295,7 @@ export default class Board{
     this.container.append(this.toolShape.canvas);
     this.toolShapeX = 100;
     this.toolShapeY = 100;
-    this.toolShapeAngle = 15;
+    this.toolShapeAngle = 0;
     this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
     this.eraser = new Eraser(this.width,this.height);
     this.container.append(this.eraser.canvas);
@@ -480,10 +478,9 @@ export default class Board{
       hasWrited = false;
       isSingleTouch = true;
       needPushPoints = true;
-      const {conformingToDistance,nearestPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
+      const {conformingToDistance} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
       if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
-        doInsertPointByToolShape(nearestPoints);
       }else{
         this.activateToolShape = false;
         writeEndX = coords.pageX;
@@ -544,32 +541,8 @@ export default class Board{
         handleWriteStart(coords);
       }
     }
-    const doInsertPointByToolShape = (nearestPoints:[number,number][]) => {
-      const len = nearestPoints.length;
-      if( len > 1){
-        for(let i = 1;i<len;i++){
-          const prevPoint = nearestPoints[i-1];
-          const currentPoint = nearestPoints[i];
-
-          const prevMiddleX = (prevPoint[0] + writeEndX)/2;
-          const prevMiddleY = (prevPoint[1] + writeEndY)/2;
-          const prevIsInPath = this.toolShape.isPointInPathInner(prevMiddleX,prevMiddleY,this.voice);
-          
-
-          const currentMiddleX = (currentPoint[0] + writeEndX)/2;
-          const currentMiddleY = (currentPoint[1] + writeEndY)/2;
-          const currentIsInPath = this.toolShape.isPointInPathInner(currentMiddleX,currentMiddleY,this.voice);
-          
-          
-          if(!currentIsInPath && !prevIsInPath){
-            doInsertPoint(prevPoint[0],prevPoint[1],currentPoint[0],currentPoint[1]);
-          }else{
-            needPushPoints = true;
-          }
-        }
-      }
-      writeEndX = nearestPoints[len-1][0];
-      writeEndY = nearestPoints[len-1][1];
+    const doInsertPointByToolShape = (nearestPoints:[number,number][],lineWidth:number) => {
+      this.writing.singlePointsWriting(nearestPoints,this.color,lineWidth);
     }
     const doInsertPoint = (writeStartX:number,writeStartY:number,writeEndX:number,writeEndY:number) => {
       if(needPushPoints){
@@ -599,8 +572,9 @@ export default class Board{
         this.drawEraser();
       }else{
         if(this.activateToolShape){
-          const {nearestPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
-          doInsertPointByToolShape(nearestPoints);
+          const lineWidth = this.voice * 3;
+          const {drawPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,lineWidth);
+          doInsertPointByToolShape(drawPoints,lineWidth);
         }else{
           doInsertPoint(writeStartX,writeStartY,writeEndX,writeEndY);
         }
@@ -722,6 +696,7 @@ export default class Board{
       }
       isDoubleTouch = false;
       isSingleTouch = false;
+      this.toolShape.prevPoint = null;
     }
     const handleTouchEnd = (event:TouchEvent) => {
       const touches = event.changedTouches;

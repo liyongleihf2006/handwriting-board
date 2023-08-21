@@ -10,8 +10,10 @@ export default class Ruler{
   outline!:[number,number][] | null;
 
   longestDistance = 30;
-  // 可以用来绘制的距离
-  shouldWriteDistance = 3;
+
+  // 像素点采集宽度
+  gatherAreaWidth = 20;
+  prevPoint:[number,number]|null = null;
   private _x!:number;
   private _y!:number;
   private _angle!:number;
@@ -61,6 +63,7 @@ export default class Ruler{
   reset(){
     this.outline = null;
     this.pathInner = null;
+    this.prevPoint = null;
   }
   setXYAngle(x:number,y:number,angle:number){
     if(this.x!==x||this.y!==y||this.angle!==angle){
@@ -70,6 +73,20 @@ export default class Ruler{
       this.draw();
     }
   }
+  getGathers(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number) {
+    const topLeftX = Math.min(x1, x2) - gatherAreaWidth / 2;
+    const topLeftY = Math.min(y1, y2) - gatherAreaWidth / 2;
+    const bottomRightX = Math.max(x1, x2) + gatherAreaWidth / 2;
+    const bottomRightY = Math.max(y1, y2) + gatherAreaWidth / 2;
+  
+    const gathers: [number,number][] = [];
+    for (let x = topLeftX; x <= bottomRightX; x++) {
+      for (let y = topLeftY; y <= bottomRightY; y++) {
+        gathers.push([x, y]);
+      }
+    }
+    return gathers;
+  }
   getNearestDistanceAndPoint(x:number,y:number,getNearestDistanceAndPointVoice:number){
     if(!this.outline || getNearestDistanceAndPointVoice !== this.getNearestDistanceAndPointVoice){
       this.getNearestDistanceAndPointVoice = getNearestDistanceAndPointVoice;
@@ -77,23 +94,57 @@ export default class Ruler{
     }
     const outline = this.outline;
     const len = outline.length;
-    const points:[number,number][] = [];
-    let nearestDistance = Number.MAX_SAFE_INTEGER;
-    for(let i = 0;i<len;i++){
-      const [x0,y0] = outline[i];
-      const distance = ((x-x0)**2 + (y-y0)**2)**0.5;
-      if(distance<nearestDistance){
-        nearestDistance = distance;
+    let prevPoint = this.prevPoint!;
+    const gatherAreaWidth = this.gatherAreaWidth;
+    if(!prevPoint){
+      let nearestDistance = Number.MAX_SAFE_INTEGER;
+      for(let i = 0;i<len;i++){
+        const [x0,y0] = outline[i];
+        const distance = ((x-x0)**2 + (y-y0)**2)**0.5;
+        if(distance<nearestDistance){
+          nearestDistance = distance;
+          prevPoint = [x0,y0];
+        }
       }
-    }
-    for(let i = 0;i<len;i++){
-      const [x0,y0] = outline[i];
-      const distance = ((x-x0)**2 + (y-y0)**2)**0.5;
-      if(distance<=nearestDistance + this.shouldWriteDistance){
-        points.push([x0,y0]);
+      this.prevPoint = prevPoint;
+      return {conformingToDistance:nearestDistance<=this.longestDistance,drawPoints:[]};
+    }else{
+      const innerAreaPoints:[number,number][] = [];
+
+      for(let i = 0;i<len;i++){
+        const [x0,y0] = outline[i];
+        const gatherDistance = ((prevPoint[0]-x0)**2 + (prevPoint[1]-y0)**2)**0.5;
+        if(gatherDistance<=gatherAreaWidth){
+          innerAreaPoints.push([x0,y0])
+        }
       }
+
+      let nearestDistance = Number.MAX_SAFE_INTEGER;
+      let gatherPoint:[number,number]|null = null;
+      for(let i = 0;i<innerAreaPoints.length;i++){
+        const [x0,y0] = innerAreaPoints[i];
+        const distance = ((x-x0)**2 + (y-y0)**2)**0.5;
+        if(distance<nearestDistance){
+          nearestDistance = distance;
+          gatherPoint = [x0,y0];
+        }
+      }
+      let gathers:[number,number][] = [];
+      if(gatherPoint){
+        gathers = this.getGathers(prevPoint[0],prevPoint[1],gatherPoint[0],gatherPoint[1],gatherAreaWidth);
+      }
+      const drawPoints = [];
+      const gathersLen = gathers.length;
+      for(let i = 0;i<gathersLen;i++){
+        const p = gathers[i];
+        const isInPath = this.isPointInPathInner(p[0],p[1],getNearestDistanceAndPointVoice);
+        if(isInPath){
+          drawPoints.push(p);
+        }
+      }
+      this.prevPoint = gatherPoint;
+      return {conformingToDistance:true,drawPoints};
     }
-    return {conformingToDistance:nearestDistance<=this.longestDistance,nearestPoints:points};
   }
   getOutline(outlineVoice:number){
     const ctx = this.ctx;
@@ -102,7 +153,7 @@ export default class Ruler{
     const offscreen = new OffscreenCanvas(width, height);
     const c = offscreen.getContext('2d')!;
     const path = this.generatorOuterBorder(outlineVoice);
-    c.strokeStyle = 'red';
+    c.strokeStyle = 'rgba(0,0,0,255)';
     c.stroke(path);
     const imageData = c.getImageData(0,0,width,height);
     const data = imageData.data;
@@ -112,7 +163,7 @@ export default class Ruler{
     let column = -1;
     for(let i = 0;i<len;i+=4){
       column++;
-      if(data[i+3]>128){
+      if(data[i+3]>=255){
         outline.push([column,row]);
       }
       if(column === width - 1){
@@ -125,9 +176,9 @@ export default class Ruler{
   isPointInPathInner(x:number,y:number,isPointInPathInnerVoice:number){
     if(!this.pathInner || isPointInPathInnerVoice!==this.isPointInPathInnerVoice){
       this.isPointInPathInnerVoice = isPointInPathInnerVoice;
-      this.pathInner = this.generatorOuterBorder(-isPointInPathInnerVoice);
+      this.pathInner = this.generatorOuterBorder(isPointInPathInnerVoice);
     }
-    return this.ctx.isPointInPath(this.pathInner,x,y);
+    return this.ctx.isPointInStroke(this.pathInner,x,y);
   }
   isPointInPath(x:number,y:number){
     return this.ctx.isPointInPath(this.path,x,y);
@@ -136,8 +187,8 @@ export default class Ruler{
     const x = this._x - voice;
     const y = this._y - voice;
     const angle = this._angle;
-    const width = this.width + voice * 2;
-    const height = this.height + voice * 2;
+    const width = this.width + voice;
+    const height = this.height + voice;
     const cm = this.cm;
     const rotateCoordinates = RotateCoordinates(angle,x,y);
     let pathStr = '';
