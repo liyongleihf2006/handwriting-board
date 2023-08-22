@@ -23,7 +23,6 @@ export function RotateCoordinates(angle: number,x0:number,y0:number) {
 }
 export function getShapeToolNewCoordAndAngle(event: TouchEvent,originX:number,originY:number,originAngle:number){
   const {angle,center} = getTripleTouchAngleAndCenter(event);
-  console.log(angle,center);
   const [x0,y0] = center;
   const [newX,newY] = rotateCoordinate(x0,y0,angle,originX,originY);
   const newAngle = originAngle + angle;

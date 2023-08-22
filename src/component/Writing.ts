@@ -19,18 +19,18 @@ export default class Writing{
     this.ctx.clearRect(0,0,this.width,this.height);
     this.putImageData(worldOffsetX,worldOffsetY);
   }
-  singlePointsWriting(points:[number,number][],color:string,lineWidth:number){
+  singlePointsWriting(points:{x:number,y:number,fillStyle:string}[]){
     const ctx = this.ctx;
-    const len = points.length;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
+    const len = points.length
     for(let i = 0;i<len;i++){
-      const [x,y] = points[i];
-      ctx.rect(x,y,lineWidth,lineWidth);
+      ctx.save();
+      ctx.beginPath();
+      const {x,y,fillStyle} = points[i];
+      ctx.fillStyle = fillStyle;
+      ctx.fillRect(x,y,1,1);
+      ctx.restore();
     }
-    ctx.fill();
-    ctx.restore();
+    
   }
   writing(points:Points,color:string){
     this.ctx.save();

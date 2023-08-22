@@ -5,9 +5,11 @@ export default class Ruler{
   ctx:CanvasRenderingContext2D;
   path!:Path2D;
   pathInner!:Path2D|null;
-  isPointInPathInnerVoice:number;
   getNearestDistanceAndPointVoice:number;
-  outline!:[number,number][] | null;
+  outlineCtx!:OffscreenCanvasRenderingContext2D;
+  outlineImageData!:ImageData;
+  outline!:[number,number,Uint8ClampedArray][] | null;
+  outlineMap!:Record<number,Record<number,Uint8ClampedArray>>;
 
   longestDistance = 30;
 
@@ -17,6 +19,7 @@ export default class Ruler{
   private _x!:number;
   private _y!:number;
   private _angle!:number;
+  private strokeStyle!:string;
   cm = 0;
   mm = 0;
   width = 0;
@@ -36,7 +39,6 @@ export default class Ruler{
     this.marginH = this.mm * 5;
     this.width = this.cm * this.degreeNumber + this.marginH * 2;
     this.height = this.cm * 2;
-    this.isPointInPathInnerVoice = voice;
     this.getNearestDistanceAndPointVoice = voice;
   }
   set x(x:number){
@@ -87,10 +89,14 @@ export default class Ruler{
     }
     return gathers;
   }
-  getNearestDistanceAndPoint(x:number,y:number,getNearestDistanceAndPointVoice:number){
-    if(!this.outline || getNearestDistanceAndPointVoice !== this.getNearestDistanceAndPointVoice){
+  getNearestDistanceAndPoint(x:number,y:number,getNearestDistanceAndPointVoice:number,strokeStyle:string){
+    if(!this.outline || getNearestDistanceAndPointVoice !== this.getNearestDistanceAndPointVoice||this.strokeStyle!==strokeStyle){
       this.getNearestDistanceAndPointVoice = getNearestDistanceAndPointVoice;
-      this.outline = this.getOutline(this.getNearestDistanceAndPointVoice);
+      this.strokeStyle = strokeStyle;
+      this.outlineCtx = this.getOutlineCtx(this.getNearestDistanceAndPointVoice,strokeStyle);
+      this.outlineImageData = this.outlineCtx.getImageData(0,0,this.w,this.h);
+      this.outline = this.getOutline(this.outlineImageData);
+      this.outlineMap = this.getOutlineMap(this.outline);
     }
     const outline = this.outline;
     const len = outline.length;
@@ -109,13 +115,13 @@ export default class Ruler{
       this.prevPoint = prevPoint;
       return {conformingToDistance:nearestDistance<=this.longestDistance,drawPoints:[]};
     }else{
-      const innerAreaPoints:[number,number][] = [];
+      const innerAreaPoints:[number,number,Uint8ClampedArray][] = [];
 
       for(let i = 0;i<len;i++){
         const [x0,y0] = outline[i];
         const gatherDistance = ((prevPoint[0]-x0)**2 + (prevPoint[1]-y0)**2)**0.5;
         if(gatherDistance<=gatherAreaWidth){
-          innerAreaPoints.push([x0,y0])
+          innerAreaPoints.push(outline[i])
         }
       }
 
@@ -137,55 +143,64 @@ export default class Ruler{
       const gathersLen = gathers.length;
       for(let i = 0;i<gathersLen;i++){
         const p = gathers[i];
-        const isInPath = this.isPointInPathInner(p[0],p[1],getNearestDistanceAndPointVoice);
-        if(isInPath){
-          drawPoints.push(p);
+        const imageData = this.outlineMap?.[p[0]]?.[p[1]];
+        if(imageData){
+          const data = imageData;
+          drawPoints.push({x:p[0],y:p[1],fillStyle:`rgba(${data[0]},${data[1]},${data[2]},${data[3]/255})`});
         }
       }
       this.prevPoint = gatherPoint;
       return {conformingToDistance:true,drawPoints};
     }
   }
-  getOutline(outlineVoice:number){
+  getOutlineCtx(outlineVoice:number,strokeStyle:string){
     const ctx = this.ctx;
     const canvas = ctx.canvas;
     const {width,height} = canvas;
     const offscreen = new OffscreenCanvas(width, height);
     const c = offscreen.getContext('2d')!;
     const path = this.generatorOuterBorder(outlineVoice);
-    c.strokeStyle = 'rgba(0,0,0,255)';
+    c.strokeStyle = strokeStyle;
+    c.lineWidth = outlineVoice;
     c.stroke(path);
-    const imageData = c.getImageData(0,0,width,height);
+    return c;
+  }
+  getOutline(imageData:ImageData){
     const data = imageData.data;
     const len = data.length;
-    const outline:[number,number][] = [];
+    const outline:[number,number,Uint8ClampedArray][] = [];
     let row = 0;
     let column = -1;
     for(let i = 0;i<len;i+=4){
       column++;
-      if(data[i+3]>=255){
-        outline.push([column,row]);
+      if(data[i+3]){
+        outline.push([column,row,data.slice(i,i+4)]);
       }
-      if(column === width - 1){
+      if(column === this.w - 1){
         row++;
         column = -1;
       }
     }
     return outline;
   }
-  isPointInPathInner(x:number,y:number,isPointInPathInnerVoice:number){
-    if(!this.pathInner || isPointInPathInnerVoice!==this.isPointInPathInnerVoice){
-      this.isPointInPathInnerVoice = isPointInPathInnerVoice;
-      this.pathInner = this.generatorOuterBorder(isPointInPathInnerVoice);
+  getOutlineMap(outline:[number,number,Uint8ClampedArray][]){
+    const map:Record<number,Record<number,Uint8ClampedArray>> = {};
+    const len = outline.length;
+    for(let i = 0;i<len;i++){
+      const [x,y,uints] = outline[i];
+      if(!map[x]){
+        map[x] = {}
+      }
+      map[x][y] = uints;
     }
-    return this.ctx.isPointInStroke(this.pathInner,x,y);
+    return map;
   }
   isPointInPath(x:number,y:number){
     return this.ctx.isPointInPath(this.path,x,y);
   }
   generatorOuterBorder(voice = 0){
-    const x = this._x - voice;
-    const y = this._y - voice;
+    const x = this._x - voice/2;
+    const y = this._y - voice/2;
     const angle = this._angle;
     const width = this.width + voice;
     const height = this.height + voice;
@@ -195,19 +210,19 @@ export default class Ruler{
     pathStr += `M${rotateCoordinates(x,y).join(',')}`;
     pathStr += `L${rotateCoordinates(x+width,y).join(',')}`
     pathStr += `L${rotateCoordinates(x+width,y+height).join(',')}`
-    const offestX = 1.5 * cm + this.marginH + voice;
+    const offestX = 1.5 * cm + this.marginH + voice/2;
     const beginWaveX = x+width - offestX;
     const beginWaveY = y+height;
-    // const endWaveX = x + offestX;
-    // const waveUnit = cm *2/3;
-    // const waveUnitY = waveUnit/4;
-    // const waveY = beginWaveY - waveUnitY;
+    const endWaveX = x + offestX;
+    const waveUnit = cm *2/3;
+    const waveUnitY = waveUnit/4;
+    const waveY = beginWaveY - waveUnitY;
     pathStr += `L${rotateCoordinates(beginWaveX,beginWaveY).join(',')}`
-    // let currentWaveUnit = beginWaveX - waveUnit;
-    // while(currentWaveUnit>endWaveX){
-    //   pathStr += `C${[...rotateCoordinates(currentWaveUnit + waveUnit/3, waveY - waveUnitY),...rotateCoordinates(currentWaveUnit + waveUnit*2/3, waveY + waveUnitY), ...rotateCoordinates(currentWaveUnit, beginWaveY)].join(',')}`;
-    //   currentWaveUnit -= waveUnit;
-    // }
+    let currentWaveUnit = beginWaveX - waveUnit;
+    while(currentWaveUnit>endWaveX){
+      pathStr += `C${[...rotateCoordinates(currentWaveUnit + waveUnit/3, waveY - waveUnitY),...rotateCoordinates(currentWaveUnit + waveUnit*2/3, waveY + waveUnitY), ...rotateCoordinates(currentWaveUnit, beginWaveY)].join(',')}`;
+      currentWaveUnit -= waveUnit;
+    }
     pathStr += `L${rotateCoordinates(x,beginWaveY).join(',')}`
 
     pathStr += 'z';

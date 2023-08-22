@@ -478,7 +478,7 @@ export default class Board{
       hasWrited = false;
       isSingleTouch = true;
       needPushPoints = true;
-      const {conformingToDistance} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice);
+      const {conformingToDistance} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice,this.color);
       if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
       }else{
@@ -541,8 +541,8 @@ export default class Board{
         handleWriteStart(coords);
       }
     }
-    const doInsertPointByToolShape = (nearestPoints:[number,number][],lineWidth:number) => {
-      this.writing.singlePointsWriting(nearestPoints,this.color,lineWidth);
+    const doInsertPointByToolShape = (nearestPoints:{x:number,y:number,fillStyle:string}[]) => {
+      this.writing.singlePointsWriting(nearestPoints);
     }
     const doInsertPoint = (writeStartX:number,writeStartY:number,writeEndX:number,writeEndY:number) => {
       if(needPushPoints){
@@ -572,9 +572,9 @@ export default class Board{
         this.drawEraser();
       }else{
         if(this.activateToolShape){
-          const lineWidth = this.voice * 3;
-          const {drawPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,lineWidth);
-          doInsertPointByToolShape(drawPoints,lineWidth);
+          const lineWidth = this.voice;
+          const {drawPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,lineWidth,this.color);
+          doInsertPointByToolShape(drawPoints);
         }else{
           doInsertPoint(writeStartX,writeStartY,writeEndX,writeEndY);
         }
