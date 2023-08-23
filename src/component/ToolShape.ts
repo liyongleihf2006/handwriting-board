@@ -1,6 +1,7 @@
-import {RotateCoordinates} from '../utils';
+import { ShapeType } from '@/enum';
 import { generateCanvas } from '../utils';
-export default class Ruler{
+import Ruler from './shape/Ruler';
+export default class ToolShape{
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
   path!:Path2D;
@@ -19,6 +20,7 @@ export default class Ruler{
   private _x!:number;
   private _y!:number;
   private _angle!:number;
+  private _toolShapeType!:ShapeType;
   private strokeStyle!:string;
   cm = 0;
   mm = 0;
@@ -26,9 +28,8 @@ export default class Ruler{
   height = 0;
   marginH = 0;
   degreeNumber = 20;
-  pathStr = '';
 
-
+  ruler:Ruler;
   constructor(public w:number,public h:number,public voice:number){
 
     this.canvas = generateCanvas(w,h);
@@ -36,10 +37,8 @@ export default class Ruler{
 
     this.cm = 96/2.54;
     this.mm = this.cm / 10;
-    this.marginH = this.mm * 5;
-    this.width = this.cm * this.degreeNumber + this.marginH * 2;
-    this.height = this.cm * 2;
     this.getNearestDistanceAndPointVoice = voice;
+    this.ruler = new Ruler(this.ctx,this.cm,this.mm);
   }
   set x(x:number){
     this._x = x;
@@ -62,18 +61,25 @@ export default class Ruler{
   get angle(){
     return this._angle;
   }
+  set toolShapeType(toolShapeType:ShapeType){
+    this._toolShapeType = toolShapeType;
+    this.reset();
+  }
+  get toolShapeType(){
+    return this._toolShapeType;
+  }
+  get shape(){
+    let shape;
+    switch(this.toolShapeType){
+      case ShapeType.RULER:shape = this.ruler;break;
+      default:shape = this.ruler;
+    }
+    return shape;
+  }
   reset(){
     this.outline = null;
     this.pathInner = null;
     this.prevPoint = null;
-  }
-  setXYAngle(x:number,y:number,angle:number){
-    if(this.x!==x||this.y!==y||this.angle!==angle){
-      this.x = x;
-      this.y = y;
-      this.angle = angle;
-      this.draw();
-    }
   }
   getGathers(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number) {
     const topLeftX = Math.min(x1, x2) - gatherAreaWidth / 2;
@@ -154,16 +160,7 @@ export default class Ruler{
     }
   }
   getOutlineCtx(outlineVoice:number,strokeStyle:string){
-    const ctx = this.ctx;
-    const canvas = ctx.canvas;
-    const {width,height} = canvas;
-    const offscreen = new OffscreenCanvas(width, height);
-    const c = offscreen.getContext('2d')!;
-    const path = this.generatorOuterBorder(outlineVoice);
-    c.strokeStyle = strokeStyle;
-    c.lineWidth = outlineVoice;
-    c.stroke(path);
-    return c;
+    return this.shape.getOutlineCtx(this._x,this._y,this._angle,outlineVoice,strokeStyle);
   }
   getOutline(imageData:ImageData){
     const data = imageData.data;
@@ -196,91 +193,17 @@ export default class Ruler{
     return map;
   }
   isPointInPath(x:number,y:number){
-    return this.ctx.isPointInPath(this.path,x,y);
+    return this.ctx.isPointInPath(this.shape.path,x,y);
   }
-  generatorOuterBorder(voice = 0){
-    const x = this._x - voice/2;
-    const y = this._y - voice/2;
-    const angle = this._angle;
-    const width = this.width + voice;
-    const height = this.height + voice;
-    const cm = this.cm;
-    const rotateCoordinates = RotateCoordinates(angle,x,y);
-    let pathStr = '';
-    pathStr += `M${rotateCoordinates(x,y).join(',')}`;
-    pathStr += `L${rotateCoordinates(x+width,y).join(',')}`
-    pathStr += `L${rotateCoordinates(x+width,y+height).join(',')}`
-    const offestX = 1.5 * cm + this.marginH + voice/2;
-    const beginWaveX = x+width - offestX;
-    const beginWaveY = y+height;
-    const endWaveX = x + offestX;
-    const waveUnit = cm *2/3;
-    const waveUnitY = waveUnit/4;
-    const waveY = beginWaveY - waveUnitY;
-    pathStr += `L${rotateCoordinates(beginWaveX,beginWaveY).join(',')}`
-    let currentWaveUnit = beginWaveX - waveUnit;
-    while(currentWaveUnit>endWaveX){
-      pathStr += `C${[...rotateCoordinates(currentWaveUnit + waveUnit/3, waveY - waveUnitY),...rotateCoordinates(currentWaveUnit + waveUnit*2/3, waveY + waveUnitY), ...rotateCoordinates(currentWaveUnit, beginWaveY)].join(',')}`;
-      currentWaveUnit -= waveUnit;
+  draw(x:number,y:number,angle:number,toolShapeType:ShapeType){
+    if(this.x!==x||this.y!==y||this.angle!==angle||this.toolShapeType!==toolShapeType){
+      this.x = x;
+      this.y = y;
+      this.angle = angle;
+      this.toolShapeType = toolShapeType;
+      const ctx = this.ctx;
+      ctx.clearRect(0,0,this.w,this.h);
+      this.shape.draw(this._x,this._y,this._angle);
     }
-    pathStr += `L${rotateCoordinates(x,beginWaveY).join(',')}`
-
-    pathStr += 'z';
-    this.pathStr = pathStr;
-    const path = new Path2D(pathStr);
-    this.path = path;
-    return path;
-  }
-  private draw(){
-    const ctx = this.ctx;
-    const marginH = this.marginH;
-    const cm = this.cm;
-    const mm = this.mm;
-    const degreeNumber = this.degreeNumber;
-    const x = this.x;
-    const y = this.y;
-    const angle = this.angle;
-    const rotateCoordinates = RotateCoordinates(angle,x,y);
-    ctx.clearRect(0,0,this.w,this.h);
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(0,0,0,.08)';
-    const path = this.generatorOuterBorder();
-    ctx.fill(path);
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'black';
-    ctx.font = "3mm serif";
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.beginPath();
-    const cmLen = 0.5 * cm;
-    const textPos = y + cmLen + mm;
-    const mmLen = cmLen * 0.6;
-    const halfCmLen = cmLen * 0.8;
-    for(let i = 0;i<=degreeNumber;i++){
-      const currentX = x + marginH + i * cm;
-      ctx.moveTo(...rotateCoordinates(currentX,y));
-      ctx.lineTo(...rotateCoordinates(currentX,y + cmLen));
-      ctx.save();
-      ctx.translate(...rotateCoordinates(currentX,textPos));
-      ctx.rotate(angle * Math.PI / 180);
-      ctx.fillText(String(i),0,0);
-      ctx.restore();
-      if(i<degreeNumber){
-        for(let j = 1;j<10;j++){
-          const currentMmX = currentX + j * mm;
-          ctx.moveTo(...rotateCoordinates(currentMmX,y));
-          if(j === 5){
-            ctx.lineTo(...rotateCoordinates(currentMmX,y + halfCmLen));
-          }else{
-            ctx.lineTo(...rotateCoordinates(currentMmX,y + mmLen));
-          }
-        }
-      }
-    }
-    ctx.stroke();
-    ctx.restore();
   }
 }

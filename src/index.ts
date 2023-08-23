@@ -1,6 +1,6 @@
 import {Options,PointsGroup,Store,ContainerOffset,Coords, OnChange, ScrollRange, Points} from './type';
 import {Stack} from './stack';
-import {WriteModel,BGPattern,ScrollDirection} from './enum';
+import {WriteModel,BGPattern,ScrollDirection,ShapeType} from './enum';
 import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils'
 import ToolShape from './component/ToolShape';
 import Background from './component/Background';
@@ -124,6 +124,10 @@ const defaultBorderStyle = '#333';
  * 边框的宽度
  */
 const defaultBorderWidth = 2;
+/**
+ * 是否使用尺子等工具
+ */
+const defaultUseShapeType = false;
 
 const defaultOptions = {
   scrollRange:defaultScrollRange,
@@ -152,7 +156,8 @@ const defaultOptions = {
   dragLocked:defaultDragLocked,
   showBorder:defaultShowBorder,
   borderStyle:defaultBorderStyle,
-  borderWidth:defaultBorderWidth
+  borderWidth:defaultBorderWidth,
+  useShapeType:defaultUseShapeType
 }
 export default class Board{
   private width:number;
@@ -185,6 +190,7 @@ export default class Board{
   private writing:Writing;
   private eraser:Eraser;
   private eraserHasContent = false;
+  private toolShapeType:ShapeType = ShapeType.RULER;
 
   scrollRange:ScrollRange;
   scrollDirection:ScrollDirection;
@@ -213,6 +219,7 @@ export default class Board{
   showBorder:boolean;
   borderStyle:string;
   borderWidth:number;
+  useShapeType:boolean;
   containerOffset:ContainerOffset;
   onChange:OnChange|undefined;
   
@@ -244,6 +251,7 @@ export default class Board{
     this.showBorder = options.showBorder ?? defaultShowBorder;
     this.borderStyle = options.borderStyle ?? defaultBorderStyle;
     this.borderWidth = options.borderWidth ?? defaultBorderWidth;
+    this.useShapeType = options.useShapeType ?? defaultUseShapeType;
     this.containerOffset = options.containerOffset ?? (()=>{
       const scrollingElement = document.scrollingElement as HTMLElement;
       const rect = this.container.getBoundingClientRect();
@@ -296,7 +304,6 @@ export default class Board{
     this.toolShapeX = 100;
     this.toolShapeY = 100;
     this.toolShapeAngle = 0;
-    this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
     this.eraser = new Eraser(this.width,this.height);
     this.container.append(this.eraser.canvas);
     this.loadEvent();
@@ -321,6 +328,18 @@ export default class Board{
   }
   hideRule(){
     this.rule = false;
+    this.draw();
+  }
+  showToolShape(){
+    this.useShapeType = true;
+    this.draw();
+  }
+  hideToolShape(){
+    this.useShapeType = false;
+    this.draw();
+  }
+  setToolShapeType(shapeType:ShapeType){
+    this.toolShapeType = shapeType;
     this.draw();
   }
   private adjustOffset(){
@@ -447,6 +466,7 @@ export default class Board{
     this.loadRule();
     this.writing.refresh(this.worldOffsetX,this.worldOffsetY);
     this.drawEraser();
+    this.drawToolShape();
     this.debounceBindOnChange();
   }
   private loadEvent(){
@@ -478,11 +498,16 @@ export default class Board{
       hasWrited = false;
       isSingleTouch = true;
       needPushPoints = true;
-      const {conformingToDistance} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice,this.color);
+      let conformingToDistance = false;
+      if(this.useShapeType){
+        const distanceAndPoint = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice,this.color);
+        conformingToDistance = distanceAndPoint.conformingToDistance;
+      }
+      
       if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
       }else{
-        if(this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
+        if(this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
           isSingleTouch = false;
         }
         this.activateToolShape = false;
@@ -515,7 +540,7 @@ export default class Board{
           this.draw();
         }
         let isPointInPath = false;
-        if(this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
+        if(this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
           isPointInPath = true;
         }
         if(isPointInPath){
@@ -568,7 +593,7 @@ export default class Board{
         this.doClean(writeEndX,writeEndY);
         this.drawEraser();
       }else{
-        if(this.activateToolShape){
+        if(this.useShapeType && this.activateToolShape){
           const lineWidth = this.voice;
           const {drawPoints} = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,lineWidth,this.color);
           doInsertPointByToolShape(drawPoints);
@@ -595,7 +620,7 @@ export default class Board{
         dragEndX = coords.pageX;
         dragEndY = coords.pageY;
         dragEndTime = performance.now();
-        if(isToolShapeDoubleTouch){
+        if(this.useShapeType && isToolShapeDoubleTouch){
           const deltaX = dragEndX - dragStartX;
           const deltaY = dragEndY - dragStartY;
           this.toolShapeX += deltaX;
@@ -609,7 +634,7 @@ export default class Board{
             this.toolShapeX = newX;
             this.toolShapeY = newY;
             this.toolShapeAngle += deltaAngle;
-            this.toolShape.setXYAngle(this.toolShapeX,this.toolShapeY,this.toolShapeAngle);
+            this.draw();
           }
         }else{
           let deltaX = 0;
@@ -840,6 +865,12 @@ export default class Board{
       this.ruleAuxiliary.draw(this.worldOffsetX,this.worldOffsetY);
     }
     this.ruleAuxiliary.canvas.style.opacity = this.rule?'1':'0';
+  }
+  private drawToolShape(){
+    if(this.useShapeType){
+      this.toolShape.draw(this.toolShapeX,this.toolShapeY,this.toolShapeAngle,this.toolShapeType);
+    }
+    this.toolShape.canvas.style.opacity = this.useShapeType?'1':'0';
   }
 }
 export { Board }

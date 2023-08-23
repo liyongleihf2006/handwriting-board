@@ -62,6 +62,17 @@
     </div>
   </div>
   <div class="operate">
+    <button id="showToolShape">显示工具</button>
+    <button id="hideToolShape">隐藏工具</button>
+    <label>
+      工具类型
+      <select id="toolShapeType">
+        <option value="ruler">直尺</option>
+        <option value="compass">量角器</option>
+        <option value="rightAngleTriangle">直角三角形</option>
+        <option value="equilateralTriangle">等边三角形</option>
+      </select>
+    </label>
     <label>
       滚动范围
       <select id="scrollRange">
@@ -148,6 +159,9 @@
     const changeVoice = document.querySelector('#changeVoice');
     const writeLocked = document.querySelector('#writeLocked');
     const writeUnlocked = document.querySelector('#writeUnlocked');
+    const showToolShape = document.querySelector('#showToolShape');
+    const hideToolShape = document.querySelector('#hideToolShape');
+    const toolShapeType = document.querySelector('#toolShapeType');
     const showBG = document.querySelector('#showBG');
     const hideBG = document.querySelector('#hideBG');
     const BGPattern = document.querySelector('#BGPattern');
@@ -229,6 +243,15 @@
     })
     hideBG.addEventListener('click', () => {
       handwritingBoard.hideBG();
+    })
+    showToolShape.addEventListener('click', () => {
+      handwritingBoard.showToolShape();
+    })
+    hideToolShape.addEventListener('click', () => {
+      handwritingBoard.hideToolShape();
+    })
+    toolShapeType.addEventListener('change', (event) => {
+      handwritingBoard.setToolShapeType(event.target.value);
     })
     BGPattern.addEventListener('change', (event) => {
       handwritingBoard.bgPattern = event.target.value;

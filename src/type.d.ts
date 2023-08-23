@@ -30,6 +30,7 @@ export type Options = {
   showBorder?:boolean;
   borderStyle?:string;
   borderWidth?:number;
+  useShapeType?:boolean;
   containerOffset?:ContainerOffset
   onChange?: OnChange;
 }
