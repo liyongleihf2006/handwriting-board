@@ -507,7 +507,7 @@ export default class Board{
       if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
       }else{
-        if(this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
+        if(!this.cleanState && this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
           isSingleTouch = false;
         }
         this.activateToolShape = false;
