@@ -482,6 +482,9 @@ export default class Board{
       if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
       }else{
+        if(this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
+          isSingleTouch = false;
+        }
         this.activateToolShape = false;
         writeEndX = coords.pageX;
         writeEndY = coords.pageY;
@@ -499,14 +502,6 @@ export default class Board{
       this.scrolling = false;
       const touches = event.touches;
       const coords = getPageCoords(touches);
-      let isPointInPath = false;
-      for(let i = 0;i<touches.length;i++){
-        const touch = touches[i];
-        if(this.toolShape.isPointInPath(touch.pageX,touch.pageY)){
-          isPointInPath = true;
-          break;
-        }
-      }
       if (touches.length === 2) {
         isDoubleTouch = true;
         isSingleTouch = false;
@@ -519,6 +514,10 @@ export default class Board{
           this.cleanPress = false;
           this.draw();
         }
+        let isPointInPath = false;
+        if(this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
+          isPointInPath = true;
+        }
         if(isPointInPath){
           isToolShapeDoubleTouch = true;
           rotationCenter = {x:coords.pageX,y:coords.pageY};
@@ -527,9 +526,7 @@ export default class Board{
         }
       }else if(touches.length === 1){
         if(!this.writeLocked){
-          if(!isPointInPath){
-            handleWriteStart(coords);
-          }
+          handleWriteStart(coords);
         }
       }
     }
