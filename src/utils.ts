@@ -36,13 +36,6 @@ export function calculateRotatedPoint(rx: number, ry: number, r: number, angle: 
 
   return [ x, y ];
 }
-export function getShapeToolNewCoordAndAngle(event: TouchEvent,originX:number,originY:number,originAngle:number){
-  const {angle,center} = getTripleTouchAngleAndCenter(event);
-  const [x0,y0] = center;
-  const [newX,newY] = rotateCoordinate(x0,y0,angle,originX,originY);
-  const newAngle = originAngle + angle;
-  return [newX,newY,newAngle];
-}
 export function getTripleTouchAngleAndCenter(event: TouchEvent){
   const touch1 = event.touches[0];
   const touch2 = event.touches[1];

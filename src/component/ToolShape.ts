@@ -16,7 +16,7 @@ export default class ToolShape{
   longestDistance = 30;
 
   // 像素点采集宽度
-  gatherAreaWidth = 20;
+  gatherAreaWidth = 10;
   prevPoint:[number,number]|null = null;
   private _x!:number;
   private _y!:number;
@@ -196,8 +196,8 @@ export default class ToolShape{
     }
     return map;
   }
-  isPointInPath(x:number,y:number){
-    return this.ctx.isPointInPath(this.shape.path,x,y);
+  isPointInPath(x:number,y:number,fillRule:CanvasFillRule){
+    return this.ctx.isPointInPath(this.shape.path,x,y,fillRule);
   }
   draw(x:number,y:number,angle:number,toolShapeType:ShapeType){
     if(this.x!==x||this.y!==y||this.angle!==angle||this.toolShapeType!==toolShapeType){

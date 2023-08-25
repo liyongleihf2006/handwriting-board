@@ -507,7 +507,7 @@ export default class Board{
       if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
       }else{
-        if(!this.cleanState && this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
+        if(!this.cleanState && this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY,'evenodd')){
           isSingleTouch = false;
         }
         this.activateToolShape = false;
@@ -540,7 +540,7 @@ export default class Board{
           this.draw();
         }
         let isPointInPath = false;
-        if(this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY)){
+        if(this.useShapeType && this.toolShape.isPointInPath(coords.pageX,coords.pageY,'nonzero')){
           isPointInPath = true;
         }
         if(isPointInPath){

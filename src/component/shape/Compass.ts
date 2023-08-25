@@ -1,4 +1,4 @@
-import {RotateCoordinates,rotateAngle,calculateRotatedPoint} from '../../utils';
+import {rotateAngle,calculateRotatedPoint} from '../../utils';
 export default class Compass{
   path!:Path2D;
 
@@ -31,7 +31,7 @@ export default class Compass{
     c.stroke(path);
     return c;
   }
-  generatorOuterBorder(_x:number,_y:number,_angle:number,voice = 0){
+  generatorOuterBorder(_cx:number,_cy:number,_angle:number,voice = 0){
     const startAngle = this.startAngle;
     const endAngle = this.endAngle;
     const innerStartAngle = this.innerStartAngle;
@@ -40,12 +40,11 @@ export default class Compass{
     const middleInsideR = this.middleR + voice;
     const middleOutsideR = middleInsideR + this.middleGap - voice;
     const smallR = this.smallR - voice;
-    const cx = _x - voice + r;
-    const cy = _y - voice + r;
-    const innerCx = cx;
-    const innerCy = cy - voice;
+    const cx = _cx;
+    const cy = _cy;
+    const innerCx = _cx;
+    const innerCy = _cy - voice;
     const path = new Path2D();
-    console.log(rotateAngle(startAngle,_angle));
     path.arc(cx,cy,r,rotateAngle(startAngle,_angle),rotateAngle(endAngle,_angle));
     path.closePath();
     path.moveTo(...calculateRotatedPoint(innerCx,innerCy,middleOutsideR,innerStartAngle,_angle));
@@ -73,7 +72,8 @@ export default class Compass{
     showText:boolean,
     showSmall:boolean,
     showMiddle:boolean,
-    textOnInner:boolean
+    textOnInner:boolean,
+    _angle:number
   ){
 
     const ctx = this.ctx;
@@ -85,7 +85,7 @@ export default class Compass{
     const unitInterval = unitBigInterval;
     const ruleLoose = 5;
     // 绘制刻度和刻度的数值
-    let angle = Math.PI; // 从圆弧顶点开始绘制
+    let angle = (180 + _angle) * Math.PI / 180;
     ctx.save();
     ctx.textAlign = 'center'; // 设置文本对齐方式
     ctx.textBaseline = 'middle';
@@ -139,38 +139,36 @@ export default class Compass{
     }
     ctx.restore();
   }
-  drawContent(_x:number,_y:number,_angle:number){
+  drawContent(_cx:number,_cy:number,_angle:number){
     const r = this.r;
     const middleR = this.middleR;
     const smallR = this.smallR;
-    const cx = _x + r;
-    const cy = _y + r;
+    const cx = _cx;
+    const cy = _cy;
 
     const ctx = this.ctx;
     ctx.save();
-    ctx.translate(cx,cy);
-    this.drawDegree(cx,cy,r,10,15,20,8,10,true,true,true,true);
-    this.drawDegree(cx,cy,middleR,10,12,15,0,0,false,true,true,true);
-    this.drawDegree(cx,cy,smallR,0,0,12,7,10,true,false,false,false);
+    this.drawDegree(cx,cy,r,10,15,20,8,10,true,true,true,true,_angle);
+    this.drawDegree(cx,cy,middleR,10,12,15,0,0,false,true,true,true,_angle);
+    this.drawDegree(cx,cy,smallR,0,0,12,7,10,true,false,false,false,_angle);
     ctx.restore();
     
 
   }
-  draw(x:number,y:number,angle:number){
+  draw(cx:number,cy:number,angle:number){
     const ctx = this.ctx;
-    const {width,height} = ctx.canvas;
+    const canvas = ctx.canvas;
     const cm = this.cm;
     const mm = this.mm;
-    ctx.clearRect(0,0,width,height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.save();
     ctx.beginPath();
     ctx.fillStyle = 'rgba(0,0,0,.08)';
-    const path = this.generatorOuterBorder(x,y,angle);
+    const path = this.generatorOuterBorder(cx,cy,angle);
     ctx.fill(path,'evenodd');
-    ctx.stroke(path);
     ctx.restore();
 
-    this.drawContent(x,y,angle);
+    this.drawContent(cx,cy,angle);
   }
 
 }
