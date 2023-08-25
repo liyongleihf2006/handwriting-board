@@ -152,8 +152,19 @@ export default class Compass{
     this.drawDegree(cx,cy,middleR,10,12,15,0,0,false,true,true,true,_angle);
     this.drawDegree(cx,cy,smallR,0,0,12,7,10,true,false,false,false,_angle);
     ctx.restore();
-    
-
+  }
+  drawPosition(cx:number,cy:number,angle:number){
+    const r = 20;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(...calculateRotatedPoint(cx,cy,r,90,angle));
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,rotateAngle(0,angle),rotateAngle(180,angle));
+    ctx.stroke();
+    ctx.restore();
   }
   draw(cx:number,cy:number,angle:number){
     const ctx = this.ctx;
@@ -169,6 +180,8 @@ export default class Compass{
     ctx.restore();
 
     this.drawContent(cx,cy,angle);
+    this.drawPosition(cx,cy,angle);
+    
   }
 
 }

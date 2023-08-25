@@ -628,7 +628,7 @@ export default class Board{
           if(event.touches.length === 2){
             const {angle} = getTripleTouchAngleAndCenter(event);
             let deltaAngle = angle - turnStartAngle;
-            deltaAngle %= 10;
+            deltaAngle %= 30;
             turnStartAngle = angle;
             const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.toolShapeCenterX,this.toolShapeCenterY);
             this.toolShapeCenterX = newX;
