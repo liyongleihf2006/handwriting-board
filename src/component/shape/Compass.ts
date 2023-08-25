@@ -6,17 +6,17 @@ export default class Compass{
   middleR:number;
   smallR:number;
   middleGap:number;
-  startAngle:number = 170;
-  endAngle:number = 370;
-  innerStartAngle:number = 180;
-  innerEndAngle:number = 360;
-  
+  startAngle = 170;
+  endAngle = 370;
+  innerStartAngle = 180;
+  innerEndAngle = 360;
+
 
 
   constructor(public ctx:CanvasRenderingContext2D,public cm:number,public mm:number){
-    this.r = cm * 5;
+    this.r = cm * 6;
     this.middleR = cm * 3.5;
-    this.middleGap = cm * 0.5;
+    this.middleGap = cm * 1;
     this.smallR = cm * 2.2;
   }
   getOutlineCtx(_x:number,_y:number,_angle:number,outlineVoice:number,strokeStyle:string){
@@ -77,7 +77,7 @@ export default class Compass{
   ){
 
     const ctx = this.ctx;
-    
+
     // 刻度设置
     const total = 180; // 总刻度数
     const unitS = Math.PI / total; // 刻度线间隔角度
@@ -169,8 +169,6 @@ export default class Compass{
   draw(cx:number,cy:number,angle:number){
     const ctx = this.ctx;
     const canvas = ctx.canvas;
-    const cm = this.cm;
-    const mm = this.mm;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.save();
     ctx.beginPath();
@@ -181,7 +179,7 @@ export default class Compass{
 
     this.drawContent(cx,cy,angle);
     this.drawPosition(cx,cy,angle);
-    
+
   }
 
 }

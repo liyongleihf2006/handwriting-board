@@ -190,7 +190,7 @@ export default class Board{
   private writing:Writing;
   private eraser:Eraser;
   private eraserHasContent = false;
-  private toolShapeType:ShapeType = ShapeType.RIGHT_ANGLE_TRIANGLE;
+  private toolShapeType:ShapeType = ShapeType.RULER;
 
   scrollRange:ScrollRange;
   scrollDirection:ScrollDirection;

@@ -31,7 +31,7 @@ export default class Ruler{
     const x = _cx - voice/2 - width/2;
     const y = _cy - voice/2 - height/2;
     const angle = _angle;
-    
+
     const cm = this.cm;
     const rotateCoordinates = RotateCoordinates(angle,_cx,_cy);
     let pathStr = '';
@@ -88,8 +88,8 @@ export default class Ruler{
     const textPos = y + cmLen + mm;
     const mmLen = cmLen * 0.6;
     const halfCmLen = cmLen * 0.8;
-    
-    
+
+
     for(let i = 0;i<=degreeNumber;i++){
       const currentX = x + marginH + i * cm;
       ctx.moveTo(...rotateCoordinates(currentX,y));

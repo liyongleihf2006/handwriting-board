@@ -32,8 +32,8 @@ export default class Triangle{
     const x = _cx - voice/2 - width/2;
     const y = _cy - voice/2 - height/2;
     const angle = _angle;
-    
-    
+
+
     const rotateCoordinates = RotateCoordinates(angle,_cx,_cy);
     const path = new Path2D();
     path.moveTo(...rotateCoordinates(x+width,y));
@@ -85,8 +85,8 @@ export default class Triangle{
     const y = cy - height/2;
     const mmLen = cmLen * 0.6;
     const halfCmLen = cmLen * 0.8;
-    
-    
+
+
     for(let i = 0;i<=degreeNumberH;i++){
       const currentX = x + marginC + i * cm;
       ctx.moveTo(...rotateCoordinates(currentX,y));
