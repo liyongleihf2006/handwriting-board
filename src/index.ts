@@ -303,7 +303,7 @@ export default class Board{
     this.container.append(this.toolShape.canvas);
     this.toolShapeX = 100;
     this.toolShapeY = 100;
-    this.toolShapeAngle = 0;
+    this.toolShapeAngle = 10;
     this.eraser = new Eraser(this.width,this.height);
     this.container.append(this.eraser.canvas);
     this.loadEvent();

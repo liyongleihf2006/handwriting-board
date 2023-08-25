@@ -1,6 +1,7 @@
 import { ShapeType } from '@/enum';
 import { generateCanvas } from '../utils';
 import Ruler from './shape/Ruler';
+import Compass from './shape/Compass';
 export default class ToolShape{
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
@@ -30,6 +31,7 @@ export default class ToolShape{
   degreeNumber = 20;
 
   ruler:Ruler;
+  compass:Compass;
   constructor(public w:number,public h:number,public voice:number){
 
     this.canvas = generateCanvas(w,h);
@@ -39,6 +41,7 @@ export default class ToolShape{
     this.mm = this.cm / 10;
     this.getNearestDistanceAndPointVoice = voice;
     this.ruler = new Ruler(this.ctx,this.cm,this.mm);
+    this.compass = new Compass(this.ctx,this.cm,this.mm);
   }
   set x(x:number){
     this._x = x;
@@ -72,6 +75,7 @@ export default class ToolShape{
     let shape;
     switch(this.toolShapeType){
       case ShapeType.RULER:shape = this.ruler;break;
+      case ShapeType.COMPASS:shape = this.compass;break;
       default:shape = this.ruler;
     }
     return shape;

@@ -8,12 +8,13 @@
   <title>handwriting-board</title>
   <style>
     body {
+      margin: 0;
       text-align: center;
     }
 
     .container {
-      width: 100%;
-      height: 500px;
+      width: 100vw;
+      height: 100vh;
       touch-action: none;
       position: relative;
     }
@@ -48,7 +49,9 @@
 
     .operate {
       position: absolute;
-      left: 500px;
+      right: 0;
+      top: 0;
+      width: 400px;
       user-select: none;
     }
   </style>
@@ -181,6 +184,7 @@
     const exportAsCanvas = document.querySelector('#exportAsCanvas');
     const exportAsPaperCanvas = document.querySelector('#exportAsPaperCanvas');
     const handwritingBoard = new Board(containerRef, {
+      useShapeType: false,
       scrollRange: [[null, null], [null, null]],
       scrollDirection: 'all',
       enableBG: true,

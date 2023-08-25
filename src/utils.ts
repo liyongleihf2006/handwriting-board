@@ -21,6 +21,21 @@ export function RotateCoordinates(angle: number,x0:number,y0:number) {
     return [targetX, targetY];
   }
 }
+export function rotateAngle(angle: number, angle0: number): number {
+  // 将角度转换为弧度
+  const radian = (angle + angle0) * (Math.PI / 180);
+  
+  return radian;
+}
+export function calculateRotatedPoint(rx: number, ry: number, r: number, angle: number, _angle: number): [number,number] {
+  const angleRad = angle * (Math.PI / 180); // 将角度转换为弧度
+  const _angleRad = _angle * (Math.PI / 180); // 将旋转角度转换为弧度
+
+  const x = rx + r * Math.cos(angleRad + _angleRad); // 计算点的 x 坐标
+  const y = ry + r * Math.sin(angleRad + _angleRad); // 计算点的 y 坐标
+
+  return [ x, y ];
+}
 export function getShapeToolNewCoordAndAngle(event: TouchEvent,originX:number,originY:number,originAngle:number){
   const {angle,center} = getTripleTouchAngleAndCenter(event);
   const [x0,y0] = center;
