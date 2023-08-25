@@ -2,6 +2,7 @@ import { ShapeType } from '../enum';
 import { generateCanvas } from '../utils';
 import Ruler from './shape/Ruler';
 import Compass from './shape/Compass';
+import Triangle from './shape/Triangle';
 export default class ToolShape{
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
@@ -32,6 +33,8 @@ export default class ToolShape{
 
   ruler:Ruler;
   compass:Compass;
+  rightAngleTriangle:Triangle;
+  isoscelesTriangle:Triangle;
   constructor(public w:number,public h:number,public voice:number){
 
     this.canvas = generateCanvas(w,h);
@@ -42,6 +45,8 @@ export default class ToolShape{
     this.getNearestDistanceAndPointVoice = voice;
     this.ruler = new Ruler(this.ctx,this.cm,this.mm);
     this.compass = new Compass(this.ctx,this.cm,this.mm);
+    this.rightAngleTriangle = new Triangle(this.ctx,this.cm,this.mm,9,5,this.cm * 3,this.cm * 1);
+    this.isoscelesTriangle = new Triangle(this.ctx,this.cm,this.mm,6,6, this.cm * 2,this.cm * 2);
   }
   set x(x:number){
     this._x = x;
@@ -76,6 +81,8 @@ export default class ToolShape{
     switch(this.toolShapeType){
       case ShapeType.RULER:shape = this.ruler;break;
       case ShapeType.COMPASS:shape = this.compass;break;
+      case ShapeType.RIGHT_ANGLE_TRIANGLE:shape = this.rightAngleTriangle;break;
+      case ShapeType.SOSCELESL_TRIANGLE:shape = this.isoscelesTriangle;break;
       default:shape = this.ruler;
     }
     return shape;

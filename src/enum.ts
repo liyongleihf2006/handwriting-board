@@ -16,5 +16,5 @@ export enum ShapeType{
   RULER = 'ruler',
   COMPASS = 'compass',
   RIGHT_ANGLE_TRIANGLE = 'rightAngleTriangle',
-  EQUILATERAL_TRIANGLE = 'equilateralTriangle'
+  SOSCELESL_TRIANGLE = 'isoscelesTriangle'
 }
