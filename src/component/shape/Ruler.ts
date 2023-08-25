@@ -35,8 +35,8 @@ export default class Ruler{
     const rotateCoordinates = RotateCoordinates(angle,x,y);
     let pathStr = '';
     pathStr += `M${rotateCoordinates(x,y).join(',')}`;
-    pathStr += `L${rotateCoordinates(x+width,y).join(',')}`
-    pathStr += `L${rotateCoordinates(x+width,y+height).join(',')}`
+    pathStr += `L${rotateCoordinates(x+width,y).join(',')}`;
+    pathStr += `L${rotateCoordinates(x+width,y+height).join(',')}`;
     const offestX = 1.5 * cm + this.marginH + voice/2;
     const beginWaveX = x+width - offestX;
     const beginWaveY = y+height;
@@ -44,13 +44,13 @@ export default class Ruler{
     const waveUnit = cm *2/3;
     const waveUnitY = waveUnit/4;
     const waveY = beginWaveY - waveUnitY;
-    pathStr += `L${rotateCoordinates(beginWaveX,beginWaveY).join(',')}`
+    pathStr += `L${rotateCoordinates(beginWaveX,beginWaveY).join(',')}`;
     let currentWaveUnit = beginWaveX - waveUnit;
     while(currentWaveUnit>endWaveX){
       pathStr += `C${[...rotateCoordinates(currentWaveUnit + waveUnit/3, waveY - waveUnitY),...rotateCoordinates(currentWaveUnit + waveUnit*2/3, waveY + waveUnitY), ...rotateCoordinates(currentWaveUnit, beginWaveY)].join(',')}`;
       currentWaveUnit -= waveUnit;
     }
-    pathStr += `L${rotateCoordinates(x,beginWaveY).join(',')}`
+    pathStr += `L${rotateCoordinates(x,beginWaveY).join(',')}`;
 
     pathStr += 'z';
     const path = new Path2D(pathStr);

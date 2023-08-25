@@ -1,4 +1,4 @@
-import { ShapeType } from '@/enum';
+import { ShapeType } from '../enum';
 import { generateCanvas } from '../utils';
 import Ruler from './shape/Ruler';
 import Compass from './shape/Compass';
@@ -90,7 +90,7 @@ export default class ToolShape{
     const topLeftY = Math.min(y1, y2) - gatherAreaWidth / 2;
     const bottomRightX = Math.max(x1, x2) + gatherAreaWidth / 2;
     const bottomRightY = Math.max(y1, y2) + gatherAreaWidth / 2;
-  
+
     const gathers: [number,number][] = [];
     for (let x = topLeftX; x <= bottomRightX; x++) {
       for (let y = topLeftY; y <= bottomRightY; y++) {
@@ -131,7 +131,7 @@ export default class ToolShape{
         const [x0,y0] = outline[i];
         const gatherDistance = ((prevPoint[0]-x0)**2 + (prevPoint[1]-y0)**2)**0.5;
         if(gatherDistance<=gatherAreaWidth){
-          innerAreaPoints.push(outline[i])
+          innerAreaPoints.push(outline[i]);
         }
       }
 
@@ -190,7 +190,7 @@ export default class ToolShape{
     for(let i = 0;i<len;i++){
       const [x,y,uints] = outline[i];
       if(!map[x]){
-        map[x] = {}
+        map[x] = {};
       }
       map[x][y] = uints;
     }

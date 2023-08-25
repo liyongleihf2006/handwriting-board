@@ -1,4 +1,4 @@
-export function debounce(func: Function, delay: number) {
+export function debounce(func: any, delay: number) {
   let timer: number;
 
   return function(this:any,...args: any[]) {
@@ -9,22 +9,22 @@ export function debounce(func: Function, delay: number) {
     }, delay);
   };
 }
-export function RotateCoordinates(angle: number,x0:number,y0:number) {  
-  const angleInRadians = angle * Math.PI / 180; 
-  const cosAngle = Math.cos(angleInRadians);  
+export function RotateCoordinates(angle: number,x0:number,y0:number) {
+  const angleInRadians = angle * Math.PI / 180;
+  const cosAngle = Math.cos(angleInRadians);
   const sinAngle = Math.sin(angleInRadians);
   return function(x: number, y: number):[number, number]{
     const x1 = x - x0;
     const y1 = y - y0;
-    const targetX = x1 * cosAngle - y1 * sinAngle + x0; 
-    const targetY = x1 * sinAngle + y1 * cosAngle + y0;  
+    const targetX = x1 * cosAngle - y1 * sinAngle + x0;
+    const targetY = x1 * sinAngle + y1 * cosAngle + y0;
     return [targetX, targetY];
-  }
+  };
 }
 export function rotateAngle(angle: number, angle0: number): number {
   // 将角度转换为弧度
   const radian = (angle + angle0) * (Math.PI / 180);
-  
+
   return radian;
 }
 export function calculateRotatedPoint(rx: number, ry: number, r: number, angle: number, _angle: number): [number,number] {

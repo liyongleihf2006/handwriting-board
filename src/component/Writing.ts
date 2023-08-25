@@ -21,7 +21,7 @@ export default class Writing{
   }
   singlePointsWriting(points:{x:number,y:number,fillStyle:string}[]){
     const ctx = this.ctx;
-    const len = points.length
+    const len = points.length;
     for(let i = 0;i<len;i++){
       ctx.save();
       ctx.beginPath();
@@ -30,7 +30,7 @@ export default class Writing{
       ctx.fillRect(x,y,1,1);
       ctx.restore();
     }
-    
+
   }
   writing(points:Points,color:string){
     this.ctx.save();
@@ -62,7 +62,7 @@ export default class Writing{
     if(determineIfThereHasContent){
       const imageData = this.ctx.getImageData(x,y,width,height);
       const data = imageData.data;
-      let len = data.length;
+      const len = data.length;
       for(let i = 0;i<len;i+=4){
         if(data[i+3]){
           hasContent = true;
@@ -87,7 +87,7 @@ export default class Writing{
       worldOffsetX,
       worldOffsetY,
       imageData
-    })
+    });
   }
   putImageData(worldOffsetX:number,worldOffsetY:number){
     const width = this.width;
@@ -206,7 +206,7 @@ export default class Writing{
             minPixelX = displayCol;
           }
           if(displayRow<minPixelY){
-            minPixelY = displayRow; 
+            minPixelY = displayRow;
           }
           if(displayCol>maxPixelX){
             maxPixelX = displayCol;
@@ -246,9 +246,9 @@ export default class Writing{
     const total = colLen * rowLen;
     const store = this.store;
     const storeLen = store.length;
-    let minX = 0;
-    let minY = 0;
-    let maxX = width;
+    const minX = 0;
+    const minY = 0;
+    const maxX = width;
     let maxY = 0;
     for(let i = 0;i<storeLen;i++){
       const storeItem = store[i];

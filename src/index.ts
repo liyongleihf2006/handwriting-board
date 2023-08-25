@@ -1,14 +1,14 @@
-import {Options,PointsGroup,Store,ContainerOffset,Coords, OnChange, ScrollRange, Points} from './type';
+import type {Options,PointsGroup,Store,ContainerOffset,Coords, OnChange, ScrollRange, Points} from './type';
 import {Stack} from './stack';
 import {WriteModel,BGPattern,ScrollDirection,ShapeType} from './enum';
-import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils'
+import {debounce,getTripleTouchAngleAndCenter,rotateCoordinate,negativeRemainder} from './utils';
 import ToolShape from './component/ToolShape';
 import Background from './component/Background';
 import RuleAuxiliary from './component/RuleAuxiliary';
 import Border from './component/Border';
 import Writing from './component/Writing';
 import Eraser from './component/Eraser';
-export {WriteModel};
+export {WriteModel,BGPattern,ScrollDirection,ShapeType};
 function isTouchDevice() {
   return 'ontouchstart' in self;
 }
@@ -158,7 +158,7 @@ const defaultOptions = {
   borderStyle:defaultBorderStyle,
   borderWidth:defaultBorderWidth,
   useShapeType:defaultUseShapeType
-}
+};
 export default class Board{
   private width:number;
   private height:number;
@@ -176,9 +176,9 @@ export default class Board{
   private minX!:number;
   private minY!:number;
   private moveT = false;
-  private debounceBindOnChange:Function;
+  private debounceBindOnChange:()=>void;
   private prevPoints!:Points|null;
-  
+
   private toolShape:ToolShape;
   private activateToolShape = false;
   private toolShapeX:number;
@@ -222,7 +222,7 @@ export default class Board{
   useShapeType:boolean;
   containerOffset:ContainerOffset;
   onChange:OnChange|undefined;
-  
+
   constructor(public container:HTMLDivElement,options:Options = defaultOptions){
     this.scrollRange = options.scrollRange ?? defaultScrollRange;
     this.scrollDirection = options.scrollDirection ?? defaultScrollDirection;
@@ -258,7 +258,7 @@ export default class Board{
       return {
         x:rect.x + scrollingElement.scrollLeft,
         y:rect.y + scrollingElement.scrollTop
-      }
+      };
     });
     this.onChange = options.onChange;
     this.debounceBindOnChange = debounce(this.triggerOnChange,500);
@@ -290,7 +290,7 @@ export default class Board{
         }
       };
     }
-    
+
     this.background = new Background(this.width,this.height,this.gridGap,this.gridFillStyle,this.gridPaperGap,this.gridPaperStrokeStyle,this.quadrillePaperVerticalMargin,this.quadrillePaperGap,this.quadrillePaperStrokeStyles);
     this.container.append(this.background.canvas);
     this.ruleAuxiliary = new RuleAuxiliary(this.width,this.height,this.ruleStrokeStyle,this.ruleGap,this.ruleUnitLen);
@@ -376,7 +376,7 @@ export default class Board{
       }else{
         this.moveT = false;
       }
-    })
+    });
   }
   scrollBy(x = 0,y = 0){
     if(!this.dragLocked){
@@ -399,7 +399,7 @@ export default class Board{
         const canvas = this.exportAsCanvas();
         this.onChange(canvas);
       }
-    })
+    });
   }
   drawPureCanvas(ctx:CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D,crop = true){
     this.pointsGroup?.forEach(({corners,fillStyle})=>{
@@ -431,8 +431,8 @@ export default class Board{
         ctx.lineTo(x21,y21);
         ctx.fill();
         ctx.restore();
-      })
-    })
+      });
+    });
   }
   exportAsCanvas(){
     return this.writing.getWholeCanvas();
@@ -444,7 +444,7 @@ export default class Board{
     canvas.height = imageCanvas.height;
     const ctx = canvas.getContext('2d')!;
     if(this.enableBG){
-      this.loadBackground(ctx,false);
+      this.loadBackground(ctx);
     }
     ctx.drawImage(imageCanvas,0,0);
     return canvas;
@@ -503,7 +503,7 @@ export default class Board{
         const distanceAndPoint = this.toolShape.getNearestDistanceAndPoint(coords.pageX,coords.pageY,this.voice,this.color);
         conformingToDistance = distanceAndPoint.conformingToDistance;
       }
-      
+
       if(!this.cleanState && conformingToDistance){
         this.activateToolShape = true;
       }else{
@@ -521,7 +521,7 @@ export default class Board{
         this.cleanPress = true;
         this.drawEraser();
       }
-    }
+    };
     const handleTouchStart = (event:TouchEvent) => {
       this.moveT = false;
       this.scrolling = false;
@@ -530,8 +530,8 @@ export default class Board{
       if (touches.length === 2) {
         isDoubleTouch = true;
         isSingleTouch = false;
-        if(this.dragLocked){return}
-        
+        if(this.dragLocked){return;}
+
         dragEndX = coords.pageX;
         dragEndY = coords.pageY;
         dragEndTime = performance.now();
@@ -554,7 +554,7 @@ export default class Board{
           handleWriteStart(coords);
         }
       }
-    }
+    };
     const handleMouseStart = (event:MouseEvent) => {
       event.preventDefault();
       if(!this.writeLocked){
@@ -562,10 +562,10 @@ export default class Board{
         const coords = getPageCoords([{pageX,pageY}]);
         handleWriteStart(coords);
       }
-    }
+    };
     const doInsertPointByToolShape = (nearestPoints:{x:number,y:number,fillStyle:string}[]) => {
       this.writing.singlePointsWriting(nearestPoints);
-    }
+    };
     const doInsertPoint = (writeStartX:number,writeStartY:number,writeEndX:number,writeEndY:number) => {
       if(needPushPoints){
         this.prevPoints = null;
@@ -577,7 +577,7 @@ export default class Board{
         this.doWriting(points);
         this.debounceBindOnChange();
       }
-    }
+    };
     const handleWriteMove = (coords:Coords) => {
       hasMoved = true;
       hasWrited = true;
@@ -601,18 +601,18 @@ export default class Board{
           doInsertPoint(writeStartX,writeStartY,writeEndX,writeEndY);
         }
       }
-    }
+    };
     const handleMouseMove = (event:MouseEvent) => {
       if(isSingleTouch){
         const {pageX,pageY} = event;
         const coords = getPageCoords([{pageX,pageY}]);
         handleWriteMove(coords);
       }
-    }
+    };
     const handleTouchMove = (event:TouchEvent) => {
       const touches = event.touches;
       if (isDoubleTouch) {
-        if(this.dragLocked){return}
+        if(this.dragLocked){return;}
         dragStartX = dragEndX;
         dragStartY = dragEndY;
         dragStartTime = dragEndTime;
@@ -656,7 +656,7 @@ export default class Board{
         const coords = getPageCoords(touches);
         handleWriteMove(coords);
       }
-    }
+    };
     const scrollDecay = (speedX:number,speedY:number) => {
       this.scrolling = true;
       const minSpeed = 0.1;
@@ -668,22 +668,22 @@ export default class Board{
           this.adjustOffset();
           this.draw();
           const ratio = Math.max((99 - 0.01 * t++),50)/100;
-          speedX = ratio * speedX
-          speedY = ratio * speedY
+          speedX = ratio * speedX;
+          speedY = ratio * speedY;
           self.requestAnimationFrame(()=>{
             if(this.scrolling){
-              _scrollDecay(speedX,speedY)
+              _scrollDecay(speedX,speedY);
             }
-          })
+          });
         }else{
           this.scrolling = false;
         }
-      }
+      };
       _scrollDecay(speedX,speedY);
-    }
+    };
     const handleWriteEnd = (coords:Coords) => {
       if (isDoubleTouch) {
-        if(this.dragLocked){return}
+        if(this.dragLocked){return;}
         const deltaX = dragEndX - dragStartX;
         const deltaY = dragEndY - dragStartY;
         const deltaTime = dragEndTime - dragStartTime;
@@ -719,17 +719,17 @@ export default class Board{
       isDoubleTouch = false;
       isSingleTouch = false;
       this.toolShape.prevPoint = null;
-    }
+    };
     const handleTouchEnd = (event:TouchEvent) => {
       const touches = event.changedTouches;
       const coords = getPageCoords(touches);
       handleWriteEnd(coords);
-    }
+    };
     const handleMouseEnd = (event:MouseEvent) => {
       const {pageX,pageY} = event;
       const coords = getPageCoords([{pageX,pageY}]);
       handleWriteEnd(coords);
-    }
+    };
     const container = this.container;
     if(isTouchDevice()){
       container.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -753,7 +753,7 @@ export default class Board{
       totalX /= length;
       totalY /= length;
       return {pageX:totalX,pageY:totalY};
-    }
+    };
   }
   private drawEraser(){
     if(this.cleanState && this.cleanPress){
@@ -771,12 +771,12 @@ export default class Board{
     return [
       [x - b * d / Math.sqrt(a**2 + b**2),y + a * d / Math.sqrt(a**2 + b**2)],
       [x + b * d / Math.sqrt(a**2 + b**2), y - a * d / Math.sqrt(a**2 + b**2)]
-    ]
+    ];
   }
   private getCornersCoordinate(x1:number,y1:number,x2:number,y2:number,d:number):[[number,number],[number,number],[number,number],[number,number]]{
-    const a = x2 - x1
-    const b = y2 - y1
-    const c = a * x1 + b * y1 + d * Math.sqrt(a**2 + b**2)
+    const a = x2 - x1;
+    const b = y2 - y1;
+    const c = a * x1 + b * y1 + d * Math.sqrt(a**2 + b**2);
     const [[x11,y11],[x12,y12]] = this.getCornerCoordinate(a,b,c,d,x1,y1);
     const [[x21,y21],[x22,y22]] = this.getCornerCoordinate(a,b,c,d,x2,y2);
     return [[x11,y11],[x12,y12],[x21,y21],[x22,y22]];
@@ -791,7 +791,7 @@ export default class Board{
     if(!isNaN(originD)){
       if(this.writeModel === WriteModel.WRITE){
         if(originD>this.d * 1.2){
-          this.d *= 1.2 
+          this.d *= 1.2;
         }else if(originD<this.d/1.2){
           this.d /= 1.2;
         }else{
@@ -800,13 +800,13 @@ export default class Board{
         if(this.d>this.maxD){
           this.d = this.maxD;
         }
-      }else if (this.writeModel === WriteModel.DRAW){ 
+      }else if (this.writeModel === WriteModel.DRAW){
         this.d = this.voice;
       }
       const points = this.getCornersCoordinate(x1,y1,x2,y2,this.d);
       const hasNaN = points.flat().some(xy=>{
         return isNaN(xy);
-      })
+      });
       if(!hasNaN){
         if(this.prevPoints){
           points[0] = this.prevPoints[2];
@@ -837,7 +837,7 @@ export default class Board{
   private doWriting(points:Points){
     this.writing.writing(points,this.color);
   }
-  private loadBackground(ctx:CanvasRenderingContext2D|null = null,offset=true){
+  private loadBackground(ctx:CanvasRenderingContext2D|null = null){
     let coordX = 0;
     let coordY = 0;
     let background:Background;
@@ -873,4 +873,4 @@ export default class Board{
     this.toolShape.canvas.style.opacity = this.useShapeType?'1':'0';
   }
 }
-export { Board }
+export { Board };
