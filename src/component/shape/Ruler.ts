@@ -25,14 +25,15 @@ export default class Ruler{
     c.stroke(path);
     return c;
   }
-  generatorOuterBorder(_x:number,_y:number,_angle:number,voice = 0){
-    const x = _x - voice/2;
-    const y = _y - voice/2;
-    const angle = _angle;
+  generatorOuterBorder(_cx:number,_cy:number,_angle:number,voice = 0){
     const width = this.width + voice;
     const height = this.height + voice;
+    const x = _cx - voice/2 - width/2;
+    const y = _cy - voice/2 - height/2;
+    const angle = _angle;
+    
     const cm = this.cm;
-    const rotateCoordinates = RotateCoordinates(angle,x,y);
+    const rotateCoordinates = RotateCoordinates(angle,_cx,_cy);
     let pathStr = '';
     pathStr += `M${rotateCoordinates(x,y).join(',')}`;
     pathStr += `L${rotateCoordinates(x+width,y).join(',')}`;
@@ -57,19 +58,21 @@ export default class Ruler{
     this.path = path;
     return path;
   }
-  draw(x:number,y:number,angle:number){
+  draw(cx:number,cy:number,angle:number){
     const ctx = this.ctx;
-    const {width,height} = ctx.canvas;
+    const canvas = ctx.canvas;
     const marginH = this.marginH;
     const cm = this.cm;
     const mm = this.mm;
     const degreeNumber = this.degreeNumber;
-    const rotateCoordinates = RotateCoordinates(angle,x,y);
-    ctx.clearRect(0,0,width,height);
+    const width = this.width;
+    const height = this.height;
+    const rotateCoordinates = RotateCoordinates(angle,cx,cy);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.save();
     ctx.beginPath();
     ctx.fillStyle = 'rgba(0,0,0,.08)';
-    const path = this.generatorOuterBorder(x,y,angle);
+    const path = this.generatorOuterBorder(cx,cy,angle);
     ctx.fill(path);
     ctx.restore();
 
@@ -80,9 +83,13 @@ export default class Ruler{
     ctx.textBaseline = 'top';
     ctx.beginPath();
     const cmLen = 0.5 * cm;
+    const x = cx - width/2;
+    const y = cy - height/2;
     const textPos = y + cmLen + mm;
     const mmLen = cmLen * 0.6;
     const halfCmLen = cmLen * 0.8;
+    
+    
     for(let i = 0;i<=degreeNumber;i++){
       const currentX = x + marginH + i * cm;
       ctx.moveTo(...rotateCoordinates(currentX,y));

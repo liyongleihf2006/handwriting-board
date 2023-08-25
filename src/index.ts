@@ -181,8 +181,8 @@ export default class Board{
 
   private toolShape:ToolShape;
   private activateToolShape = false;
-  private toolShapeX:number;
-  private toolShapeY:number;
+  private toolShapeCenterX:number;
+  private toolShapeCenterY:number;
   private toolShapeAngle:number;
   private background:Background;
   private ruleAuxiliary:RuleAuxiliary;
@@ -301,8 +301,8 @@ export default class Board{
     this.container.append(this.writing.canvas);
     this.toolShape = new ToolShape(this.width,this.height,this.voice);
     this.container.append(this.toolShape.canvas);
-    this.toolShapeX = 100;
-    this.toolShapeY = 100;
+    this.toolShapeCenterX = 500;
+    this.toolShapeCenterY = 200;
     this.toolShapeAngle = 10;
     this.eraser = new Eraser(this.width,this.height);
     this.container.append(this.eraser.canvas);
@@ -623,16 +623,16 @@ export default class Board{
         if(this.useShapeType && isToolShapeDoubleTouch){
           const deltaX = dragEndX - dragStartX;
           const deltaY = dragEndY - dragStartY;
-          this.toolShapeX += deltaX;
-          this.toolShapeY += deltaY;
+          this.toolShapeCenterX += deltaX;
+          this.toolShapeCenterY += deltaY;
           if(event.touches.length === 2){
             const {angle} = getTripleTouchAngleAndCenter(event);
             let deltaAngle = angle - turnStartAngle;
             deltaAngle %= 10;
             turnStartAngle = angle;
-            const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.toolShapeX,this.toolShapeY);
-            this.toolShapeX = newX;
-            this.toolShapeY = newY;
+            const [newX,newY] = rotateCoordinate(rotationCenter.x,rotationCenter.y,deltaAngle,this.toolShapeCenterX,this.toolShapeCenterY);
+            this.toolShapeCenterX = newX;
+            this.toolShapeCenterY = newY;
             this.toolShapeAngle += deltaAngle;
             this.draw();
           }
@@ -868,7 +868,7 @@ export default class Board{
   }
   private drawToolShape(){
     if(this.useShapeType){
-      this.toolShape.draw(this.toolShapeX,this.toolShapeY,this.toolShapeAngle,this.toolShapeType);
+      this.toolShape.draw(this.toolShapeCenterX,this.toolShapeCenterY,this.toolShapeAngle,this.toolShapeType);
     }
     this.toolShape.canvas.style.opacity = this.useShapeType?'1':'0';
   }
