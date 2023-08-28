@@ -132,4 +132,7 @@ export default class Triangle{
     ctx.stroke();
     ctx.restore();
   }
+  isPointInPath(x:number,y:number,fillRule:CanvasFillRule){
+    return this.ctx.isPointInPath(this.path,x,y,fillRule);
+  }
 }

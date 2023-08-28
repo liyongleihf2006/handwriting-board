@@ -6,8 +6,6 @@ import Triangle from './shape/Triangle';
 export default class ToolShape{
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
-  path!:Path2D;
-  pathInner!:Path2D|null;
   getNearestDistanceAndPointVoice:number;
   outlineCtx!:OffscreenCanvasRenderingContext2D;
   outlineImageData!:ImageData;
@@ -89,7 +87,6 @@ export default class ToolShape{
   }
   reset(){
     this.outline = null;
-    this.pathInner = null;
     this.prevPoint = null;
   }
   getGathers(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number) {
@@ -204,7 +201,7 @@ export default class ToolShape{
     return map;
   }
   isPointInPath(x:number,y:number,fillRule:CanvasFillRule){
-    return this.ctx.isPointInPath(this.shape.path,x,y,fillRule);
+    return this.shape.isPointInPath(x,y,fillRule);
   }
   draw(x:number,y:number,angle:number,toolShapeType:ShapeType){
     if(this.x!==x||this.y!==y||this.angle!==angle||this.toolShapeType!==toolShapeType){

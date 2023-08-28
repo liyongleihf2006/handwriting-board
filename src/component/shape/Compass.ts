@@ -182,5 +182,8 @@ export default class Compass{
     this.drawPosition(cx,cy,angle);
 
   }
+  isPointInPath(x:number,y:number,fillRule:CanvasFillRule){
+    return this.ctx.isPointInPath(this.path,x,y,fillRule);
+  }
 
 }
