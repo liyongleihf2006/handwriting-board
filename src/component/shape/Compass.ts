@@ -73,7 +73,8 @@ export default class Compass{
     showSmall:boolean,
     showMiddle:boolean,
     textOnInner:boolean,
-    _angle:number
+    _angle:number,
+    reverse = false
   ){
 
     const ctx = this.ctx;
@@ -111,7 +112,7 @@ export default class Compass{
           ctx.textAlign = 'center';
           ctx.translate(textX,textY);
           ctx.rotate(angle + Math.PI/2);
-          ctx.fillText(i.toString(),0,0);
+          ctx.fillText((reverse?total - i : i).toString(),0,0);
           ctx.restore();
         }
       } else if(!(i%ruleLoose)) { // 中刻度
@@ -150,7 +151,7 @@ export default class Compass{
     ctx.save();
     this.drawDegree(cx,cy,r,10,15,20,8,10,true,true,true,true,_angle);
     this.drawDegree(cx,cy,middleR,10,12,15,0,0,false,true,true,true,_angle);
-    this.drawDegree(cx,cy,smallR,0,0,12,7,10,true,false,false,false,_angle);
+    this.drawDegree(cx,cy,smallR,0,0,12,7,10,true,false,false,false,_angle,true);
     ctx.restore();
   }
   drawPosition(cx:number,cy:number,angle:number){
