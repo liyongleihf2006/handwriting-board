@@ -15,6 +15,7 @@ export enum ScrollDirection{
 export enum ShapeType{
   RULER = 'ruler',
   COMPASS = 'compass',
+  COMPASS360 = 'compass360',
   RIGHT_ANGLE_TRIANGLE = 'rightAngleTriangle',
   SOSCELESL_TRIANGLE = 'isoscelesTriangle'
 }
