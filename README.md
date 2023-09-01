@@ -29,7 +29,8 @@ const handwritingBoard = new Board(containerRef, {
   voice: 1,
   color: '#333',
   stack: true,
-  cleanR: 20,
+  cleanWidth: 20,
+  cleanHeight: 20,
   moveCountTotal: 20,
   writeLocked: false,
   dragLocked: false,
@@ -40,26 +41,26 @@ const handwritingBoard = new Board(containerRef, {
 ```
 **参数说明**
 
-名称 | 类型 | 默认值 | 参数说明
---  | --   | --    | --
-grid| boolean|true|是否启用棋盘
-gridGap|number|100|棋盘间距
-gridFillStyle|string|'rgb(250,250,250)'|棋盘填充色
-rule|boolean|true|是否启用标尺
-ruleGap|number|10|标尺间距
-ruleUnitLen|number|5|标尺刻度长度
-ruleStrokeStyle|string|'rgba(0,0,0,0.5)'|标尺刻度颜色
-voice|number|1|笔尖的粗细
-color|string|'rgb(0,0,0)'|墨水的颜色
-stack|boolean|true|是否启用操作历史,对于刻度,拖拽,棋盘操作无效
-cleanR|number|20|橡皮擦半径
-moveCountTotal|number|20|滚动行为执行的次数
-writeLocked|boolean|false|是否锁定书写
-dragLocked|boolean|false|是否锁定拖拽
-showBorder|boolean|true|是否显示边框
-borderStyle|string|'#333'|边框颜色
-borderWidth|number|2|边框宽度
-containerOffset|function|[默认位置函数](#containerOffset)|容器在页面中的位置
+| 名称            | 类型     | 默认值                           | 参数说明                                    |
+| --------------- | -------- | -------------------------------- | ------------------------------------------- |
+| grid            | boolean  | true                             | 是否启用棋盘                                |
+| gridGap         | number   | 100                              | 棋盘间距                                    |
+| gridFillStyle   | string   | 'rgb(250,250,250)'               | 棋盘填充色                                  |
+| rule            | boolean  | true                             | 是否启用标尺                                |
+| ruleGap         | number   | 10                               | 标尺间距                                    |
+| ruleUnitLen     | number   | 5                                | 标尺刻度长度                                |
+| ruleStrokeStyle | string   | 'rgba(0,0,0,0.5)'                | 标尺刻度颜色                                |
+| voice           | number   | 1                                | 笔尖的粗细                                  |
+| color           | string   | 'rgb(0,0,0)'                     | 墨水的颜色                                  |
+| stack           | boolean  | true                             | 是否启用操作历史,对于刻度,拖拽,棋盘操作无效 |
+| cleanWidth      | number   | 20                               | 橡皮擦宽度                                  |
+| moveCountTotal  | number   | 20                               | 滚动行为执行的次数                          |
+| writeLocked     | boolean  | false                            | 是否锁定书写                                |
+| dragLocked      | boolean  | false                            | 是否锁定拖拽                                |
+| showBorder      | boolean  | true                             | 是否显示边框                                |
+| borderStyle     | string   | '#333'                           | 边框颜色                                    |
+| borderWidth     | number   | 2                                | 边框宽度                                    |
+| containerOffset | function | [默认位置函数](#containerOffset) | 容器在页面中的位置                          |
 
 _注意_
 
@@ -85,16 +86,16 @@ _注意_
 
 **实例方法**
 
-名称 | 参数 | 返回值 | 参数说明 | 方法说明
---  | --   | --    | -- | --
-showGrid|-|void|-|显示棋盘
-hideGrid|-|void|-|隐藏棋盘
-showRule|-|void|-|显示刻度
-hideRule|-|void|-|隐藏刻度
-scrollBy |x:number,y:number|void|要滚动的偏移量|pc端上面画布偏移移动需要调用该方法,移动端直接双指滑动就可以了
-clear|-|void|-|清空画布并返回初始坐标位置
-clean|-|void|-|启用橡皮擦
-unclean|-|void|-|关闭橡皮擦
-undo|-|void|-|若是启用了stack,操作历史后退
-redo|-|void|-|若是启用了stack,操作历史前进
-exportAsCanvas|-|void|-|导出绘画的内容画布
+| 名称           | 参数              | 返回值 | 参数说明       | 方法说明                                                      |
+| -------------- | ----------------- | ------ | -------------- | ------------------------------------------------------------- |
+| showGrid       | -                 | void   | -              | 显示棋盘                                                      |
+| hideGrid       | -                 | void   | -              | 隐藏棋盘                                                      |
+| showRule       | -                 | void   | -              | 显示刻度                                                      |
+| hideRule       | -                 | void   | -              | 隐藏刻度                                                      |
+| scrollBy       | x:number,y:number | void   | 要滚动的偏移量 | pc端上面画布偏移移动需要调用该方法,移动端直接双指滑动就可以了 |
+| clear          | -                 | void   | -              | 清空画布并返回初始坐标位置                                    |
+| clean          | -                 | void   | -              | 启用橡皮擦                                                    |
+| unclean        | -                 | void   | -              | 关闭橡皮擦                                                    |
+| undo           | -                 | void   | -              | 若是启用了stack,操作历史后退                                  |
+| redo           | -                 | void   | -              | 若是启用了stack,操作历史前进                                  |
+| exportAsCanvas | -                 | void   | -              | 导出绘画的内容画布                                            |

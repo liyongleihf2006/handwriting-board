@@ -8,26 +8,104 @@
   <title>handwriting-board</title>
   <style>
     body {
+      margin: 0;
       text-align: center;
     }
 
     .container {
-      width: 100%;
-      height: 500px;
+      width: 100vw;
+      height: 100vh;
       touch-action: none;
+      position: relative;
+    }
+
+    .container-canvas {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .container-img-wrap {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: calc(100%/3);
+      height: calc(100%/3);
+      background: rgba(0, 0, 0, .1);
+      border: 1px solid rgba(0, 0, 0, .3);
+      opacity: 0.5;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    .container-img-wrap-show {
+      visibility: visible;
+    }
+
+    .container-img {
+      max-width: 100%;
+      max-height: 100%;
     }
 
     .operate {
       position: absolute;
-      left: 500px;
+      right: 0;
+      top: 100vh;
+      transform: translateY(-100%);
+      width: 400px;
       user-select: none;
     }
   </style>
 </head>
 
 <body>
-  <canvas id="containerRef" class="container"></canvas>
+  <div class="container">
+    <div id="containerRef" class="container-canvas"></div>
+    <div id="imgWrapRef" class="container-img-wrap">
+      <img id="imgRef" class="container-img">
+    </div>
+  </div>
   <div class="operate">
+    <button id="showToolShape">显示工具</button>
+    <button id="hideToolShape">隐藏工具</button>
+    <label>
+      工具类型
+      <select id="toolShapeType">
+        <option value="ruler">直尺</option>
+        <option value="compass">量角器</option>
+        <option value="compass360">360量角器</option>
+        <option value="rightAngleTriangle">直角三角形</option>
+        <option value="isoscelesTriangle">等腰三角形</option>
+      </select>
+    </label>
+    <label>
+      滚动范围
+      <select id="scrollRange">
+        <option value="[[null,null],[null,null]]">不限制</option>
+        <option value="[[0,null],[null,null]]">x正向</option>
+        <option value="[[null,null],[0,null]]">y正向</option>
+        <option value="[[0,null],[0,null]]">xy正向</option>
+      </select>
+    </label>
+    <label>
+      滚动方向
+      <select id="scrollDirection">
+        <option value="all">xy方向</option>
+        <option value="x">x方向</option>
+        <option value="y">y方向</option>
+      </select>
+    </label>
+    <label>
+      启用全览
+      <input type="checkbox" id="changeEnableEagleEyeMode">
+    </label>
+    <label>
+      书写模式
+      <select id="changeWriteModel">
+        <option value="write">书写模式</option>
+        <option value="draw">绘画模式</option>
+      </select>
+    </label>
     <label>
       画笔颜色
       <select id="changeColor">
@@ -44,8 +122,16 @@
         <option value="3">3</option>
       </select>
     </label>
-    <button id="showGrid">显示棋盘</button>
-    <button id="hideGrid">隐藏棋盘</button>
+    <button id="showBG">显示背景</button>
+    <button id="hideBG">隐藏背景</button>
+    <label>
+      背景模式
+      <select id="BGPattern">
+        <option value="grid">棋盘</option>
+        <option value="gridPaper">田字格</option>
+        <option value="quadrillePaper">四线格</option>
+      </select>
+    </label>
     <button id="showRule">显示标尺</button>
     <button id="hideRule">隐藏标尺</button>
     <button id="writeLocked">书写锁定</button>
@@ -62,17 +148,28 @@
     <button id="undo">后退</button>
     <button id="redo">前进</button>
     <button id="exportAsCanvas">导出为画布</button>
+    <button id="exportAsPaperCanvas">导出为整页画布</button>
   </div>
   <script src="./dist/index.umd.min.js"></script>
   <script type="module">
     const Board = HandwritingBoard.Board;
     const containerRef = document.querySelector('#containerRef');
+    const imgWrapRef = document.querySelector('#imgWrapRef');
+    const imgRef = document.querySelector('#imgRef');
+    const scrollRange = document.querySelector('#scrollRange');
+    const scrollDirection = document.querySelector('#scrollDirection');
+    const changeEnableEagleEyeMode = document.querySelector('#changeEnableEagleEyeMode');
+    const changeWriteModel = document.querySelector('#changeWriteModel');
     const changeColor = document.querySelector('#changeColor');
     const changeVoice = document.querySelector('#changeVoice');
     const writeLocked = document.querySelector('#writeLocked');
     const writeUnlocked = document.querySelector('#writeUnlocked');
-    const showGrid = document.querySelector('#showGrid');
-    const hideGrid = document.querySelector('#hideGrid');
+    const showToolShape = document.querySelector('#showToolShape');
+    const hideToolShape = document.querySelector('#hideToolShape');
+    const toolShapeType = document.querySelector('#toolShapeType');
+    const showBG = document.querySelector('#showBG');
+    const hideBG = document.querySelector('#hideBG');
+    const BGPattern = document.querySelector('#BGPattern');
     const showRule = document.querySelector('#showRule');
     const hideRule = document.querySelector('#hideRule');
     const dragLocked = document.querySelector('#dragLocked');
@@ -87,10 +184,18 @@
     const undo = document.querySelector('#undo');
     const redo = document.querySelector('#redo');
     const exportAsCanvas = document.querySelector('#exportAsCanvas');
+    const exportAsPaperCanvas = document.querySelector('#exportAsPaperCanvas');
     const handwritingBoard = new Board(containerRef, {
-      grid: true,
+      useShapeType: true,
+      scrollRange: [[null, null], [null, null]],
+      scrollDirection: 'all',
+      enableBG: true,
       gridGap: 100,
+      gridPaperGap: 100,
+      quadrillePaperVerticalMargin: 40,
+      quadrillePaperGap: 30,
       gridFillStyle: 'rgb(250,250,250)',
+      quadrillePaperStrokeStyles: ['rgba(0,0,255,.5)', 'rgba(255,0,0,.5)', 'rgba(0,0,255,1)', 'rgba(0,0,255,.5)'],
       rule: true,
       ruleGap: 10,
       ruleUnitLen: 5,
@@ -98,7 +203,8 @@
       voice: 1,
       color: '#333',
       stack: true,
-      cleanR: 20,
+      cleanWidth: 20,
+      cleanHeight: 20,
       moveCountTotal: 20,
       writeLocked: false,
       dragLocked: false,
@@ -106,17 +212,56 @@
       borderStyle: '#333',
       borderWidth: 2
     });
+    scrollRange.addEventListener('change', (event) => {
+      handwritingBoard.scrollRange = JSON.parse(event.target.value);
+    })
+    scrollDirection.addEventListener('change', (event) => {
+      handwritingBoard.scrollDirection = event.target.value;
+    })
+    changeEnableEagleEyeMode.addEventListener('change', (event) => {
+      const checked = event.target.checked;
+      imgWrapRef.classList.toggle('container-img-wrap-show', checked);
+      if (checked) {
+        handwritingBoard.onChange = (canvas) => {
+          if (!canvas.width) {
+            imgRef.removeAttribute('src');
+          } else {
+            const dataURL = canvas.toDataURL();
+            imgRef.src = dataURL;
+          }
+        }
+        handwritingBoard.triggerOnChange();
+      } else {
+        handwritingBoard.onChange = null;
+      }
+    })
+    changeWriteModel.addEventListener('change', (event) => {
+      handwritingBoard.writeModel = event.target.value;
+    })
     changeColor.addEventListener('change', (event) => {
       handwritingBoard.color = event.target.value;
     })
     changeVoice.addEventListener('change', (event) => {
       handwritingBoard.setVoice(Number(event.target.value));
     })
-    showGrid.addEventListener('click', () => {
-      handwritingBoard.showGrid();
+    showBG.addEventListener('click', () => {
+      handwritingBoard.showBG();
     })
-    hideGrid.addEventListener('click', () => {
-      handwritingBoard.hideGrid();
+    hideBG.addEventListener('click', () => {
+      handwritingBoard.hideBG();
+    })
+    showToolShape.addEventListener('click', () => {
+      handwritingBoard.showToolShape();
+    })
+    hideToolShape.addEventListener('click', () => {
+      handwritingBoard.hideToolShape();
+    })
+    toolShapeType.addEventListener('change', (event) => {
+      handwritingBoard.setToolShapeType(event.target.value);
+    })
+    BGPattern.addEventListener('change', (event) => {
+      handwritingBoard.bgPattern = event.target.value;
+      handwritingBoard.draw();
     })
     showRule.addEventListener('click', () => {
       handwritingBoard.showRule();
@@ -170,6 +315,13 @@
       img.src = dataURL;
       img.style.border = '1px solid';
       img.style.background = 'rgba(0,0,0,0.1)';
+      document.body.append(img);
+    })
+    exportAsPaperCanvas.addEventListener('click', () => {
+      const canvas = handwritingBoard.exportAsPaperCanvas();
+      const dataURL = canvas.toDataURL()
+      const img = document.createElement('img');
+      img.src = dataURL;
       document.body.append(img);
     })
   </script>
