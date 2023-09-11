@@ -69,11 +69,11 @@ export default class Compass {
       const pointer2 = this.pointer2;
       dragEndX = coords.pageX;
       dragEndY = coords.pageY;
-      if (ctx.isPointInPath(pointer2, coords.pageX, coords.pageY)) {
+      if (pointer2 && ctx.isPointInPath(pointer2, coords.pageX, coords.pageY)) {
         event.stopImmediatePropagation();
         movePointer2 = true;
         doTurn = true;
-      } else if (ctx.isPointInPath(pointer1, coords.pageX, coords.pageY)) {
+      } else if (pointer1 && ctx.isPointInPath(pointer1, coords.pageX, coords.pageY)) {
         event.stopImmediatePropagation();
         movePointer1 = true;
         doTurn = true;
