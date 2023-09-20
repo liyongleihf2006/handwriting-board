@@ -131,7 +131,9 @@ function generateCanvas(width, height) {
         left: '0',
         top: '0',
         position: 'absolute',
-        'pointer-events': 'none'
+        'pointer-events': 'none',
+        width: '100%',
+        height: '100%'
     });
     return canvas;
 }
@@ -495,12 +497,12 @@ class Compass {
             const pointer2 = this.pointer2;
             dragEndX = coords.pageX;
             dragEndY = coords.pageY;
-            if (ctx.isPointInPath(pointer2, coords.pageX, coords.pageY)) {
+            if (pointer2 && ctx.isPointInPath(pointer2, coords.pageX, coords.pageY)) {
                 event.stopImmediatePropagation();
                 movePointer2 = true;
                 doTurn = true;
             }
-            else if (ctx.isPointInPath(pointer1, coords.pageX, coords.pageY)) {
+            else if (pointer1 && ctx.isPointInPath(pointer1, coords.pageX, coords.pageY)) {
                 event.stopImmediatePropagation();
                 movePointer1 = true;
                 doTurn = true;
@@ -1347,15 +1349,16 @@ class Border {
 }
 
 class Writing {
-    width;
-    height;
     store = [];
     canvas;
     ctx;
+    scale = 1;
+    width;
+    height;
     constructor(width, height) {
-        this.width = width;
-        this.height = height;
-        this.canvas = generateCanvas(width, height);
+        this.width = width * this.scale;
+        this.height = height * this.scale;
+        this.canvas = generateCanvas(this.width, this.height);
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     }
     refresh(worldOffsetX, worldOffsetY) {
@@ -1370,29 +1373,9 @@ class Writing {
             ctx.beginPath();
             const { x, y, fillStyle } = points[i];
             ctx.fillStyle = fillStyle;
-            ctx.fillRect(x, y, 1, 1);
+            ctx.fillRect(x * this.scale, y * this.scale, 1, 1);
             ctx.restore();
         }
-    }
-    writing(points, color) {
-        this.ctx.save();
-        this.ctx.fillStyle = color;
-        this.ctx.beginPath();
-        const [[wx11, wy11], [wx12, wy12], [wx21, wy21], [wx22, wy22]] = points;
-        const x11 = wx11;
-        const y11 = wy11;
-        const x12 = wx12;
-        const y12 = wy12;
-        const x21 = wx21;
-        const y21 = wy21;
-        const x22 = wx22;
-        const y22 = wy22;
-        this.ctx.moveTo(x11, y11);
-        this.ctx.lineTo(x12, y12);
-        this.ctx.lineTo(x22, y22);
-        this.ctx.lineTo(x21, y21);
-        this.ctx.fill();
-        this.ctx.restore();
     }
     clear() {
         this.store.length = 0;
@@ -1400,6 +1383,10 @@ class Writing {
         this.pushImageData(0, 0);
     }
     doClean(x, y, width, height, determineIfThereHasContent = false) {
+        x = this.scale * x;
+        y = this.scale * y;
+        width = this.scale * width;
+        height = this.scale * height;
         let hasContent = false;
         if (determineIfThereHasContent) {
             const imageData = this.ctx.getImageData(x, y, width, height);
@@ -1658,7 +1645,7 @@ class Writing {
     }
 }
 
-class Eraser {
+let Eraser$1 = class Eraser {
     width;
     height;
     canvas;
@@ -1680,6 +1667,180 @@ class Eraser {
         this.ctx.stroke();
         this.ctx.restore();
         this.ctx.beginPath();
+    }
+};
+
+class Eraser {
+    writing;
+    canvas;
+    ctx;
+    svgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    writeModel = WriteModel.WRITE;
+    width;
+    height;
+    voice;
+    color;
+    x = null;
+    y = null;
+    d = null;
+    prevX = null;
+    prevY = null;
+    prevD = null;
+    constructor(width, height, voice, writing) {
+        this.writing = writing;
+        this.width = width;
+        this.height = height;
+        this.voice = voice;
+        this.canvas = generateCanvas(this.width, this.height);
+        this.ctx = this.canvas.getContext('2d');
+    }
+    reset(color) {
+        this.color = color;
+    }
+    submit() {
+        this.x = null;
+        this.y = null;
+        this.d = null;
+        this.prevX = null;
+        this.prevY = null;
+        this.prevD = null;
+    }
+    draw(pointerType, { prevX, prevY, prevD, x, y, d }) {
+        const writingCtx = this.writing.ctx;
+        const endX = x;
+        const endY = y;
+        const endD = d;
+        const startX = prevX;
+        const startY = prevY;
+        const startD = prevD;
+        if (startX !== null && startY !== null && startD !== null) {
+            if (startX !== endX && startY !== endY) {
+                const pathStr = `M${startX},${startY}L${endX},${endY}`;
+                if (pointerType === 'pen') {
+                    this.svgPath.setAttribute('d', pathStr);
+                    const totalLength = this.svgPath.getTotalLength();
+                    if (!totalLength) {
+                        return;
+                    }
+                    const ratio = 1 / (window.devicePixelRatio * 2);
+                    let prevD = -1 * this.voice;
+                    const fragments = [];
+                    for (let i = 0; i < totalLength; i += ratio) {
+                        let currentD = startD * (totalLength - i) / totalLength + endD * i / totalLength;
+                        if (!fragments.length) {
+                            fragments.push([i, i]);
+                            prevD = currentD;
+                        }
+                        else {
+                            const lastFragment = fragments[fragments.length - 1];
+                            if (Math.abs(currentD - prevD) < ratio) {
+                                lastFragment[1] = i;
+                            }
+                            else {
+                                fragments.push([lastFragment[1], i]);
+                                prevD = currentD;
+                            }
+                        }
+                    }
+                    fragments[fragments.length - 1][1] = totalLength;
+                    fragments.forEach(fragment => {
+                        const avgI = (fragment[0] + fragment[fragment.length - 1]) / 2;
+                        let avgD = startD * (totalLength - avgI) / totalLength + endD * avgI / totalLength;
+                        fragment[2] = avgD;
+                    });
+                    writingCtx.save();
+                    writingCtx.strokeStyle = this.color;
+                    writingCtx.fillStyle = this.color;
+                    for (let i = 0; i < fragments.length; i++) {
+                        const [start, end, d] = fragments[i];
+                        writingCtx.beginPath();
+                        writingCtx.lineWidth = d;
+                        writingCtx.setLineDash([0, start, end, Number.MAX_SAFE_INTEGER]);
+                        const path = new Path2D(pathStr);
+                        writingCtx.stroke(path);
+                        if (d >= 3) {
+                            const { x, y } = this.svgPath.getPointAtLength(start);
+                            writingCtx.save();
+                            writingCtx.globalAlpha = 1;
+                            writingCtx.fillStyle = this.color;
+                            writingCtx.beginPath();
+                            writingCtx.arc(x, y, d / 2 - 1, 0, Math.PI * 2);
+                            writingCtx.fill();
+                            writingCtx.restore();
+                        }
+                    }
+                    if (startD >= 3) {
+                        writingCtx.save();
+                        writingCtx.globalAlpha = 1;
+                        writingCtx.fillStyle = this.color;
+                        writingCtx.beginPath();
+                        writingCtx.arc(startX, startY, startD / 2 - 1, 0, Math.PI * 2);
+                        writingCtx.fill();
+                        writingCtx.restore();
+                    }
+                    if (endD >= 3) {
+                        writingCtx.save();
+                        writingCtx.globalAlpha = 1;
+                        writingCtx.fillStyle = this.color;
+                        writingCtx.beginPath();
+                        writingCtx.arc(endX, endY, endD / 2 - 1, 0, Math.PI * 2);
+                        writingCtx.fill();
+                        writingCtx.restore();
+                    }
+                    writingCtx.restore();
+                }
+                else {
+                    writingCtx.save();
+                    writingCtx.lineJoin = 'round';
+                    writingCtx.lineCap = 'round';
+                    writingCtx.strokeStyle = this.color;
+                    writingCtx.beginPath();
+                    writingCtx.lineWidth = d;
+                    const path = new Path2D(pathStr);
+                    writingCtx.stroke(path);
+                    console.log(d);
+                }
+            }
+        }
+    }
+    pushPoints({ x, y, pressure, pointerType }) {
+        let prevX = this.prevX;
+        let prevY = this.prevY;
+        const prevD = this.d;
+        if (this.x === null || (x !== this.x && y !== this.y)) {
+            prevX = this.x;
+            prevY = this.y;
+            this.prevX = prevX;
+            this.prevY = prevY;
+        }
+        this.x = x;
+        this.y = y;
+        if (pointerType === 'pen') {
+            const minPressure = 0.2;
+            const maxPressure = 0.5;
+            pressure = Math.min(Math.max(minPressure, pressure), maxPressure);
+            const d = this.voice * (.5 + 1.5 * (pressure - minPressure) / (maxPressure - minPressure));
+            this.d = d;
+            this.draw(pointerType, {
+                prevX,
+                prevY,
+                prevD,
+                x,
+                y,
+                d
+            });
+        }
+        else {
+            this.d = this.voice;
+            this.draw(pointerType, {
+                prevX,
+                prevY,
+                prevD,
+                x,
+                y,
+                d: this.d
+            });
+        }
     }
 }
 
@@ -1839,19 +2000,13 @@ class Board {
     worldOffsetX = 0;
     worldOffsetY = 0;
     scrolling = false;
-    d = 1;
-    maxD = 2;
-    pointsGroup = [];
     cleanState = false;
     cleanX;
     cleanY;
     cleanPress = false;
     stackObj;
-    minX;
-    minY;
     moveT = false;
     debounceBindOnChange;
-    prevPoints;
     toolShape;
     activateToolShape = false;
     toolShapeCenterX;
@@ -1864,6 +2019,7 @@ class Board {
     eraser;
     eraserHasContent = false;
     toolShapeType = ShapeType.RULER;
+    brushDrawing;
     scrollRange;
     scrollDirection;
     bgPattern;
@@ -1976,15 +2132,18 @@ class Board {
         this.toolShapeCenterX = 500;
         this.toolShapeCenterY = 300;
         this.toolShapeAngle = 10;
-        this.eraser = new Eraser(this.width, this.height);
+        this.eraser = new Eraser$1(this.width, this.height);
         this.container.append(this.eraser.canvas);
+        this.brushDrawing = new Eraser(this.width, this.height, this.voice, this.writing);
+        this.container.append(this.brushDrawing.canvas);
         this.loadEvent();
         this.draw();
     }
     setVoice(voice = 1) {
         this.voice = voice;
-        this.d = voice;
-        this.maxD = voice * 2;
+        this.brushDrawing.voice = voice;
+        this.brushDrawing.d = voice;
+        this.brushDrawing.maxD = voice * 2;
     }
     showBG() {
         this.enableBG = true;
@@ -2076,39 +2235,6 @@ class Board {
             }
         });
     }
-    drawPureCanvas(ctx, crop = true) {
-        this.pointsGroup?.forEach(({ corners, fillStyle }) => {
-            corners.forEach(([[wx11, wy11], [wx12, wy12], [wx21, wy21], [wx22, wy22]]) => {
-                let x11 = wx11;
-                let y11 = wy11;
-                let x12 = wx12;
-                let y12 = wy12;
-                let x21 = wx21;
-                let y21 = wy21;
-                let x22 = wx22;
-                let y22 = wy22;
-                if (crop) {
-                    x11 = wx11 - this.minX;
-                    y11 = wy11 - this.minY;
-                    x12 = wx12 - this.minX;
-                    y12 = wy12 - this.minY;
-                    x21 = wx21 - this.minX;
-                    y21 = wy21 - this.minY;
-                    x22 = wx22 - this.minX;
-                    y22 = wy22 - this.minY;
-                }
-                ctx.save();
-                ctx.fillStyle = fillStyle;
-                ctx.beginPath();
-                ctx.moveTo(x11, y11);
-                ctx.lineTo(x12, y12);
-                ctx.lineTo(x22, y22);
-                ctx.lineTo(x21, y21);
-                ctx.fill();
-                ctx.restore();
-            });
-        });
-    }
     exportAsCanvas() {
         return this.writing.getWholeCanvas();
     }
@@ -2144,8 +2270,11 @@ class Board {
         this.drawToolShape();
         this.debounceBindOnChange();
     }
+    doPushPoints(x, y, event) {
+        if (event.pointerType === 'pen') ;
+        this.brushDrawing.pushPoints({ x, y, pressure: event.pressure, pointerType: event.pointerType });
+    }
     loadEvent() {
-        let hasMoved = false;
         let hasWrited = false;
         let isDoubleTouch = false;
         let isToolShapeDoubleTouch = false;
@@ -2157,19 +2286,12 @@ class Board {
         let dragEndX = 0;
         let dragEndY = 0;
         let dragEndTime = 0;
-        let needPushPoints = false;
         let isSingleTouch = false;
-        let writeStartX = 0;
-        let writeStartY = 0;
-        let writeStartTime = 0;
-        let writeEndX = 0;
-        let writeEndY = 0;
-        let writeEndTime = 0;
-        const handleWriteStart = (coords) => {
-            hasMoved = false;
+        const handleWriteStart = (coords, event) => {
+            const x = coords.pageX;
+            const y = coords.pageY;
+            this.brushDrawing.reset(this.color);
             hasWrited = false;
-            isSingleTouch = true;
-            needPushPoints = true;
             let conformingToDistance = false;
             if (this.useShapeType) {
                 const distanceAndPoint = this.toolShape.getNearestDistanceAndPoint(coords.pageX, coords.pageY, this.voice, this.color);
@@ -2182,14 +2304,14 @@ class Board {
                 if (!this.cleanState && this.useShapeType && this.toolShape.isPointInPath(coords.pageX, coords.pageY, 'evenodd')) {
                     isSingleTouch = false;
                 }
+                else if (!this.cleanState && !this.useShapeType) {
+                    this.doPushPoints(x, y, event);
+                }
                 this.activateToolShape = false;
-                writeEndX = coords.pageX;
-                writeEndY = coords.pageY;
             }
-            writeEndTime = performance.now();
             if (this.cleanState) {
-                this.cleanX = writeEndX;
-                this.cleanY = writeEndY;
+                this.cleanX = x;
+                this.cleanY = y;
                 this.cleanPress = true;
                 this.drawEraser();
             }
@@ -2224,48 +2346,37 @@ class Board {
                     isToolShapeDoubleTouch = false;
                 }
             }
-            else if (touches.length === 1) {
-                if (!this.writeLocked) {
-                    handleWriteStart(coords);
-                }
+            else if (touches.length === 1 && !this.writeLocked) {
+                isSingleTouch = true;
+            }
+            else {
+                isSingleTouch = false;
             }
         };
-        const handleMouseStart = (event) => {
+        const handlePointerdown = (event) => {
+            isSingleTouch = true;
             event.preventDefault();
             if (!this.writeLocked) {
-                const { pageX, pageY } = event;
-                const coords = this.getPageCoords([{ pageX, pageY }]);
-                handleWriteStart(coords);
+                setTimeout(() => {
+                    if (isSingleTouch) {
+                        const { pageX, pageY } = event;
+                        const coords = this.getPageCoords([{ pageX, pageY }]);
+                        handleWriteStart(coords, event);
+                    }
+                });
             }
         };
         const doInsertPointByToolShape = (nearestPoints) => {
             this.writing.singlePointsWriting(nearestPoints);
         };
-        const doInsertPoint = (writeStartX, writeStartY, writeEndX, writeEndY) => {
-            if (needPushPoints) {
-                this.prevPoints = null;
-                needPushPoints = false;
-            }
-            const points = this.pushPoints(writeStartX, writeStartY, writeEndX, writeEndY, writeStartTime, writeEndTime);
-            if (points) {
-                this.prevPoints = points;
-                this.doWriting(points);
-                this.debounceBindOnChange();
-            }
-        };
-        const handleWriteMove = (coords) => {
-            hasMoved = true;
+        const handleWriteMove = (coords, event) => {
+            const x = coords.pageX;
+            const y = coords.pageY;
             hasWrited = true;
-            writeStartX = writeEndX;
-            writeStartY = writeEndY;
-            writeStartTime = writeEndTime;
-            writeEndX = coords.pageX;
-            writeEndY = coords.pageY;
-            writeEndTime = performance.now();
             if (this.cleanState) {
-                this.cleanX = writeEndX;
-                this.cleanY = writeEndY;
-                this.doClean(writeEndX, writeEndY);
+                this.cleanX = x;
+                this.cleanY = y;
+                this.doClean(x, y);
                 this.drawEraser();
             }
             else {
@@ -2275,16 +2386,18 @@ class Board {
                     doInsertPointByToolShape(drawPoints);
                 }
                 else {
-                    doInsertPoint(writeStartX, writeStartY, writeEndX, writeEndY);
+                    this.doPushPoints(x, y, event);
                 }
             }
         };
-        const handleMouseMove = (event) => {
-            if (isSingleTouch) {
-                const { pageX, pageY } = event;
-                const coords = this.getPageCoords([{ pageX, pageY }]);
-                handleWriteMove(coords);
-            }
+        const handlePointermove = (event) => {
+            setTimeout(() => {
+                if (isSingleTouch) {
+                    const { pageX, pageY } = event;
+                    const coords = this.getPageCoords([{ pageX, pageY }]);
+                    handleWriteMove(coords, event);
+                }
+            });
         };
         const handleTouchMove = (event) => {
             const touches = event.touches;
@@ -2334,10 +2447,6 @@ class Board {
                     this.adjustOffset();
                     this.draw();
                 }
-            }
-            else if (isSingleTouch) {
-                const coords = this.getPageCoords(touches);
-                handleWriteMove(coords);
             }
         };
         const scrollDecay = (speedX, speedY) => {
@@ -2389,10 +2498,15 @@ class Board {
                     scrollDecay(speedX, speedY);
                 }
             }
-            else if (isSingleTouch) {
-                if (!hasMoved) {
-                    handleWriteMove(coords);
-                }
+        };
+        const handleTouchEnd = (event) => {
+            const touches = event.changedTouches;
+            this.getPageCoords(touches);
+            handleWriteEnd();
+        };
+        const handlePointerup = (event) => {
+            this.brushDrawing.submit();
+            if (isSingleTouch) {
                 if (!this.cleanState || this.eraserHasContent) {
                     this.eraserHasContent = false;
                     this.writing.pushImageData(this.worldOffsetX, this.worldOffsetY);
@@ -2409,27 +2523,15 @@ class Board {
             isSingleTouch = false;
             this.toolShape.prevPoint = null;
         };
-        const handleTouchEnd = (event) => {
-            const touches = event.changedTouches;
-            const coords = this.getPageCoords(touches);
-            handleWriteEnd(coords);
-        };
-        const handleMouseEnd = (event) => {
-            const { pageX, pageY } = event;
-            const coords = this.getPageCoords([{ pageX, pageY }]);
-            handleWriteEnd(coords);
-        };
         const container = this.container;
         if (isTouchDevice()) {
             container.addEventListener("touchstart", handleTouchStart, { passive: true });
             container.addEventListener("touchmove", handleTouchMove, { passive: true });
             container.addEventListener("touchend", handleTouchEnd, { passive: true });
         }
-        else {
-            container.addEventListener("mousedown", handleMouseStart);
-            self.addEventListener("mousemove", handleMouseMove, { passive: true });
-            self.addEventListener("mouseup", handleMouseEnd, { passive: true });
-        }
+        container.addEventListener("pointerdown", handlePointerdown);
+        self.addEventListener("pointermove", handlePointermove);
+        self.addEventListener("pointerup", handlePointerup);
     }
     getPageCoords = (touches) => {
         const { x: containerX, y: containerY } = this.containerOffset();
@@ -2456,81 +2558,6 @@ class Board {
         if (hasContent) {
             this.eraserHasContent = true;
         }
-    }
-    getCornerCoordinate(a, b, c, d, x, y) {
-        return [
-            [x - b * d / Math.sqrt(a ** 2 + b ** 2), y + a * d / Math.sqrt(a ** 2 + b ** 2)],
-            [x + b * d / Math.sqrt(a ** 2 + b ** 2), y - a * d / Math.sqrt(a ** 2 + b ** 2)]
-        ];
-    }
-    getCornersCoordinate(x1, y1, x2, y2, d) {
-        const a = x2 - x1;
-        const b = y2 - y1;
-        const c = a * x1 + b * y1 + d * Math.sqrt(a ** 2 + b ** 2);
-        const [[x11, y11], [x12, y12]] = this.getCornerCoordinate(a, b, c, d, x1, y1);
-        const [[x21, y21], [x22, y22]] = this.getCornerCoordinate(a, b, c, d, x2, y2);
-        return [[x11, y11], [x12, y12], [x21, y21], [x22, y22]];
-    }
-    pushPoints(writeStartX, writeStartY, writeEndX, writeEndY, writeStartTime, writeEndTime) {
-        const x1 = writeStartX;
-        const y1 = writeStartY;
-        const x2 = writeEndX;
-        const y2 = writeEndY;
-        const distance = ((y2 - y1) ** 2 + (x2 - x1) ** 2) ** 0.5;
-        const originD = (writeEndTime - writeStartTime) / distance * this.voice;
-        if (!isNaN(originD)) {
-            if (this.writeModel === WriteModel.WRITE) {
-                if (originD > this.d * 1.2) {
-                    this.d *= 1.2;
-                }
-                else if (originD < this.d / 1.2) {
-                    this.d /= 1.2;
-                }
-                else {
-                    this.d = originD;
-                }
-                if (this.d > this.maxD) {
-                    this.d = this.maxD;
-                }
-            }
-            else if (this.writeModel === WriteModel.DRAW) {
-                this.d = this.voice;
-            }
-            const points = this.getCornersCoordinate(x1, y1, x2, y2, this.d);
-            const hasNaN = points.flat().some(xy => {
-                return isNaN(xy);
-            });
-            if (!hasNaN) {
-                if (this.prevPoints) {
-                    points[0] = this.prevPoints[2];
-                    points[1] = this.prevPoints[3];
-                }
-                return points;
-            }
-            else if (!distance) {
-                let d = this.voice;
-                if (this.writeModel === WriteModel.WRITE) {
-                    let rate = (writeEndTime - writeStartTime) / 250;
-                    if (rate > 2) {
-                        rate = 2;
-                    }
-                    else if (rate < 1) {
-                        rate = 1;
-                    }
-                    d = this.voice * rate;
-                }
-                const points = [
-                    [x1 - d, y1 - d],
-                    [x1 - d, y1 + d],
-                    [x1 + d, y1 - d],
-                    [x1 + d, y1 + d]
-                ];
-                return points;
-            }
-        }
-    }
-    doWriting(points) {
-        this.writing.writing(points, this.color);
     }
     loadBackground(ctx = null) {
         let coordX = 0;

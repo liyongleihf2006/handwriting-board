@@ -79,7 +79,6 @@ export default class Board {
     clean(): void;
     unclean(): void;
     draw(): void;
-    private doPushPoints;
     private loadEvent;
     getPageCoords: (touches: TouchList | Coords[]) => {
         pageX: number;
@@ -87,6 +86,7 @@ export default class Board {
     };
     private drawEraser;
     private doClean;
+    private doWriting;
     private loadBackground;
     private loadRule;
     private drawToolShape;
