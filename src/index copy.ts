@@ -303,7 +303,7 @@ export default class Board {
     this.toolShapeAngle = 10;
     this.eraser = new Eraser(this.width, this.height);
     this.container.append(this.eraser.canvas);
-    this.brushDrawing = new BrushDrawing(this.width,this.height,this.voice,this.writing);
+    this.brushDrawing = new BrushDrawing(this.width,this.height,this.voice);
     this.container.append(this.brushDrawing.canvas);
     this.loadEvent();
     this.draw();
@@ -436,12 +436,6 @@ export default class Board {
     this.drawToolShape();
     this.debounceBindOnChange();
   }
-  private doPushPoints(x:number,y:number,event:PointerEvent){
-    if(event.pointerType === 'pen'){
-      
-    }
-    this.brushDrawing.pushPoints({x,y,pressure:event.pressure,pointerType:event.pointerType});
-  }
   private loadEvent() {
     let hasMoved = false;
     let hasWrited = false;
@@ -457,15 +451,21 @@ export default class Board {
     let dragEndY = 0;
     let dragEndTime = 0;
 
+    let needPushPoints = false;
     let isSingleTouch = false;
+    let writeStartX = 0;
+    let writeStartY = 0;
+    let writeStartTime = 0;
+    let writeEndX = 0;
+    let writeEndY = 0;
+    let writeEndTime = 0;
 
-
-    const handleWriteStart = (coords: Coords,event: PointerEvent) => {
-      const x = coords.pageX;
-      const y = coords.pageY;
+    const handleWriteStart = (coords: Coords) => {
       this.brushDrawing.reset(this.color);
       hasMoved = false;
       hasWrited = false;
+      isSingleTouch = true;
+      needPushPoints = true;
       let conformingToDistance = false;
       if (this.useShapeType) {
         const distanceAndPoint = this.toolShape.getNearestDistanceAndPoint(coords.pageX, coords.pageY, this.voice, this.color);
@@ -477,14 +477,15 @@ export default class Board {
       } else {
         if (!this.cleanState && this.useShapeType && this.toolShape.isPointInPath(coords.pageX, coords.pageY, 'evenodd')) {
           isSingleTouch = false;
-        }else if(!this.cleanState && !this.useShapeType){
-          this.doPushPoints(x,y,event);
         }
         this.activateToolShape = false;
+        writeEndX = coords.pageX;
+        writeEndY = coords.pageY;
       }
+      writeEndTime = performance.now();
       if (this.cleanState) {
-        this.cleanX = x;
-        this.cleanY = y;
+        this.cleanX = writeEndX;
+        this.cleanY = writeEndY;
         this.cleanPress = true;
         this.drawEraser();
       }
@@ -516,37 +517,47 @@ export default class Board {
         } else {
           isToolShapeDoubleTouch = false;
         }
-      } else if (touches.length === 1 && !this.writeLocked) {
-        isSingleTouch = true;
-      }else{
-        isSingleTouch = false;
+      } else if (touches.length === 1) {
+        if (!this.writeLocked) {
+          handleWriteStart(coords);
+        }
       }
     };
-    const handlePointerdown = (event: PointerEvent) => {
-      isSingleTouch = true;
+    const handleMouseStart = (event: MouseEvent) => {
       event.preventDefault();
       if (!this.writeLocked) {
-        setTimeout(() => {
-          if(isSingleTouch){
-            const { pageX, pageY } = event;
-            const coords = this.getPageCoords([{ pageX, pageY }]);
-            handleWriteStart(coords,event);
-          }
-        });
+        const { pageX, pageY } = event;
+        const coords = this.getPageCoords([{ pageX, pageY }]);
+        handleWriteStart(coords);
       }
     };
     const doInsertPointByToolShape = (nearestPoints: { x: number, y: number, fillStyle: string }[]) => {
       this.writing.singlePointsWriting(nearestPoints);
     };
-    const handleWriteMove = (coords: Coords,event: PointerEvent) => {
-      const x = coords.pageX;
-      const y = coords.pageY;
+    const doInsertPoint = (writeStartX: number, writeStartY: number, writeEndX: number, writeEndY: number) => {
+      if (needPushPoints) {
+        needPushPoints = false;
+      }
+      this.brushDrawing.pushPoints(writeStartX, writeStartY, writeEndX, writeEndY, writeStartTime, writeEndTime);
+      // const points = this.pushPoints(writeStartX, writeStartY, writeEndX, writeEndY, writeStartTime, writeEndTime);
+      // if (points) {
+      //   this.doWriting(points);
+      //   this.debounceBindOnChange();
+      // }
+    };
+    const handleWriteMove = (coords: Coords) => {
       hasMoved = true;
       hasWrited = true;
+      writeStartX = writeEndX;
+      writeStartY = writeEndY;
+      writeStartTime = writeEndTime;
+      writeEndX = coords.pageX;
+      writeEndY = coords.pageY;
+      writeEndTime = performance.now();
       if (this.cleanState) {
-        this.cleanX = x;
-        this.cleanY = y;
-        this.doClean(x, y);
+        this.cleanX = writeEndX;
+        this.cleanY = writeEndY;
+        this.doClean(writeEndX, writeEndY);
         this.drawEraser();
       } else {
         if (this.useShapeType && this.activateToolShape) {
@@ -554,18 +565,16 @@ export default class Board {
           const { drawPoints } = this.toolShape.getNearestDistanceAndPoint(coords.pageX, coords.pageY, lineWidth, this.color);
           doInsertPointByToolShape(drawPoints);
         } else {
-          this.doPushPoints(x,y,event);
+          doInsertPoint(writeStartX, writeStartY, writeEndX, writeEndY);
         }
       }
     };
-    const handlePointermove = (event: PointerEvent) => {
-      setTimeout(() => {
-        if (isSingleTouch) {
-          const { pageX, pageY } = event;
-          const coords = this.getPageCoords([{ pageX, pageY }]);
-          handleWriteMove(coords,event);
-        }
-      });
+    const handleMouseMove = (event: MouseEvent) => {
+      if (isSingleTouch) {
+        const { pageX, pageY } = event;
+        const coords = this.getPageCoords([{ pageX, pageY }]);
+        handleWriteMove(coords);
+      }
     };
     const handleTouchMove = (event: TouchEvent) => {
       const touches = event.touches;
@@ -610,6 +619,9 @@ export default class Board {
           this.adjustOffset();
           this.draw();
         }
+      } else if (isSingleTouch) {
+        const coords = this.getPageCoords(touches);
+        handleWriteMove(coords);
       }
     };
     const scrollDecay = (speedX: number, speedY: number) => {
@@ -655,18 +667,12 @@ export default class Board {
         if (!isToolShapeDoubleTouch) {
           scrollDecay(speedX, speedY);
         }
-      }
-      
-    };
-    const handleTouchEnd = (event: TouchEvent) => {
-      const touches = event.changedTouches;
-      const coords = this.getPageCoords(touches);
-      handleWriteEnd(coords);
-    };
-    const handlePointerup = (event: PointerEvent) => {
-      this.brushDrawing.submit();
-      if (isSingleTouch) {
+      } else if (isSingleTouch) {
+        if (!hasMoved) {
+          handleWriteMove(coords);
+        }
         if (!this.cleanState || this.eraserHasContent) {
+          this.brushDrawing.submit(this.writing.ctx);
           this.eraserHasContent = false;
           this.writing.pushImageData(this.worldOffsetX, this.worldOffsetY);
           if (this.stack && hasWrited) {
@@ -674,7 +680,6 @@ export default class Board {
           }
         }
       }
-
       if (this.cleanState) {
         this.cleanPress = false;
         this.draw();
@@ -683,15 +688,26 @@ export default class Board {
       isSingleTouch = false;
       this.toolShape.prevPoint = null;
     };
+    const handleTouchEnd = (event: TouchEvent) => {
+      const touches = event.changedTouches;
+      const coords = this.getPageCoords(touches);
+      handleWriteEnd(coords);
+    };
+    const handleMouseEnd = (event: MouseEvent) => {
+      const { pageX, pageY } = event;
+      const coords = this.getPageCoords([{ pageX, pageY }]);
+      handleWriteEnd(coords);
+    };
     const container = this.container;
     if (isTouchDevice()) {
       container.addEventListener("touchstart", handleTouchStart, { passive: true });
       container.addEventListener("touchmove", handleTouchMove, { passive: true });
       container.addEventListener("touchend", handleTouchEnd, { passive: true });
+    } else {
+      container.addEventListener("mousedown", handleMouseStart);
+      self.addEventListener("mousemove", handleMouseMove, { passive: true });
+      self.addEventListener("mouseup", handleMouseEnd, { passive: true });
     }
-    container.addEventListener("pointerdown", handlePointerdown);
-    self.addEventListener("pointermove", handlePointermove);
-    self.addEventListener("pointerup", handlePointerup);
 
   }
   getPageCoords = (touches: TouchList | Coords[]) => {
@@ -719,6 +735,10 @@ export default class Board {
     if (hasContent) {
       this.eraserHasContent = true;
     }
+  }
+  
+  private doWriting(points: Points) {
+    this.writing.writing(points, this.color);
   }
   private loadBackground(ctx: CanvasRenderingContext2D | null = null) {
     let coordX = 0;

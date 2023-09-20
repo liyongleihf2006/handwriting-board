@@ -118,8 +118,9 @@
       画笔粗细
       <select id="changeVoice">
         <option value="1">1</option>
-        <option value="0.3">0.3</option>
+        <option value="10">10</option>
         <option value="3">3</option>
+        <option value="20">20</option>
       </select>
     </label>
     <button id="showBG">显示背景</button>
@@ -186,7 +187,7 @@
     const exportAsCanvas = document.querySelector('#exportAsCanvas');
     const exportAsPaperCanvas = document.querySelector('#exportAsPaperCanvas');
     const handwritingBoard = new Board(containerRef, {
-      useShapeType: true,
+      useShapeType: false,
       scrollRange: [[null, null], [null, null]],
       scrollDirection: 'all',
       enableBG: true,
@@ -200,7 +201,6 @@
       ruleGap: 10,
       ruleUnitLen: 5,
       ruleStrokeStyle: 'rgba(0,0,0,0.5)',
-      voice: 1,
       color: '#333',
       stack: true,
       cleanWidth: 20,

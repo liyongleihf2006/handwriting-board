@@ -1,4 +1,4 @@
-import type {Store, Points} from '../type';
+import type {Store} from '../type';
 
 import { generateCanvas } from '../utils';
 export default class Writing{
@@ -7,12 +7,17 @@ export default class Writing{
 
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
+  scale = 1;
+  width:number;
+  height:number;
 
   constructor(
-    public width:number,
-    public height:number
+    width:number,
+    height:number
   ){
-    this.canvas = generateCanvas(width,height);
+    this.width = width * this.scale;
+    this.height = height * this.scale;
+    this.canvas = generateCanvas(this.width,this.height);
     this.ctx = this.canvas.getContext('2d',{ willReadFrequently: true })!;
   }
   refresh(worldOffsetX:number,worldOffsetY:number){
@@ -27,30 +32,10 @@ export default class Writing{
       ctx.beginPath();
       const {x,y,fillStyle} = points[i];
       ctx.fillStyle = fillStyle;
-      ctx.fillRect(x,y,1,1);
+      ctx.fillRect(x * this.scale,y * this.scale,1,1);
       ctx.restore();
     }
 
-  }
-  writing(points:Points,color:string){
-    this.ctx.save();
-    this.ctx.fillStyle = color;
-    this.ctx.beginPath();
-    const [[wx11,wy11],[wx12,wy12],[wx21,wy21],[wx22,wy22]] = points;
-    const x11 = wx11;
-    const y11 = wy11;
-    const x12 = wx12;
-    const y12 = wy12;
-    const x21 = wx21;
-    const y21 = wy21;
-    const x22 = wx22;
-    const y22 = wy22;
-    this.ctx.moveTo(x11,y11);
-    this.ctx.lineTo(x12,y12);
-    this.ctx.lineTo(x22,y22);
-    this.ctx.lineTo(x21,y21);
-    this.ctx.fill();
-    this.ctx.restore();
   }
   clear(){
     this.store.length = 0;
@@ -58,6 +43,10 @@ export default class Writing{
     this.pushImageData(0,0);
   }
   doClean(x:number,y:number,width:number,height:number,determineIfThereHasContent = false){
+    x = this.scale * x;
+    y = this.scale * y;
+    width = this.scale * width;
+    height = this.scale * height;
     let hasContent = false;
     if(determineIfThereHasContent){
       const imageData = this.ctx.getImageData(x,y,width,height);

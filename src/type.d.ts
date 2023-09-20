@@ -34,10 +34,6 @@ export type Options = {
   containerOffset?: ContainerOffset
   onChange?: OnChange;
 }
-export type PointsGroup = {
-  corners: [[number, number], [number, number], [number, number], [number, number]][],
-  fillStyle: string
-}[];
 export type ContainerOffset = () => ({ x: number, y: number });
 export type Coords = { pageX: number, pageY: number };
 export type StoreItem = {
@@ -46,5 +42,5 @@ export type StoreItem = {
   imageData: ImageData
 }
 export type Store = StoreItem[];
-export type Points = [[number, number], [number, number], [number, number], [number, number]];
+export type Points = [[number, number], [number, number], [number, number], [number, number],[number,number],[number,number],[number,number]];
 export type GetPageCoords = (touches: TouchList | Coords[]) => { pageX: number, pageY: number }
