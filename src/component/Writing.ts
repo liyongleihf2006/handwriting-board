@@ -19,6 +19,8 @@ export default class Writing{
     this.height = height * this.scale;
     this.canvas = generateCanvas(this.width,this.height);
     this.ctx = this.canvas.getContext('2d',{ willReadFrequently: true })!;
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingQuality = 'high';
   }
   refresh(worldOffsetX:number,worldOffsetY:number){
     this.ctx.clearRect(0,0,this.width,this.height);
