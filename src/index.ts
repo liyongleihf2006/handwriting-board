@@ -312,7 +312,6 @@ export default class Board {
     this.voice = voice;
     this.brushDrawing.voice = voice;
     this.brushDrawing.d = voice;
-    this.brushDrawing.maxD = voice * 2;
   }
   showBG() {
     this.enableBG = true;

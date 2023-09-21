@@ -1,11 +1,9 @@
 import { WriteModel } from '../enum';
 import { generateCanvas } from '../utils';
 import Writing from './Writing';
-type PointType = {x:number,y:number,d:number,distance:number};
 export default class Eraser{
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
-  svgPath = document.createElementNS('http://www.w3.org/2000/svg','path');
   writeModel:WriteModel = WriteModel.WRITE;
 
   width:number;
@@ -21,6 +19,7 @@ export default class Eraser{
   prevY:number|null = null;
   prevD:number|null = null;
 
+  lineStart = true;
   constructor(
     width:number,
     height:number,
@@ -31,13 +30,16 @@ export default class Eraser{
     this.height = height;
     this.voice = voice;
     this.canvas = generateCanvas(this.width,this.height);
-    this.ctx = this.canvas.getContext('2d')!;
+    this.ctx = this.canvas.getContext('2d',{willReadFrequently:true})!;
   }
 
   reset(color:string){
     this.color = color;
+    this.lineStart = true;
   }
   submit(){
+    // this.cleanData();
+    this.lineStart = false;
     this.x = null;
     this.y = null;
     this.d = null;
@@ -45,10 +47,26 @@ export default class Eraser{
     this.prevY = null;
     this.prevD = null;
   }
+  cleanData(){
+    const imageData = this.ctx.getImageData(0,0,this.width,this.height);
+    console.log(imageData);
+    const data = imageData.data;
+    const len = data.length;
+    for(let i = 3;i<len;i+=4){
+      if(data[i]){
+        data[i] = 255;
+      }
+    }
+    // this.ctx.clearRect(0,0,this.width,this.height);
+    // this.ctx.putImageData(imageData,0,0);
+    this.writing.ctx.drawImage(this.canvas,0,0,this.width,this.height);
+    this.ctx.clearRect(0,0,this.width,this.height);
+  }
   draw(pointerType:string,{
     prevX,prevY,prevD,x,y,d
   }:{prevX:number|null,prevY:number|null,prevD:number|null,x:number|null,y:number|null,d:number|null}){
     const writingCtx = this.writing.ctx;
+    const ctx = this.ctx;
     const endX = x!;
     const endY = y!;
     const endD = d!;
@@ -57,87 +75,53 @@ export default class Eraser{
     const startD = prevD!;
     if(startX!==null&&startY!==null&&startD!==null){
       if(startX!==endX&&startY!==endY){
-        const pathStr = `M${startX},${startY}L${endX},${endY}`;
-        if(pointerType === 'pen'){
-          this.svgPath.setAttribute('d',pathStr);
-          const totalLength = this.svgPath.getTotalLength();
-          if(!totalLength){return};
-          const ratio = 1/(window.devicePixelRatio * 2);
-          let prevD = -1 * this.voice;
+        const threshold = 1.5;
+        if(startD>threshold || endD>threshold){
+          const angle = Math.atan2(endY - startY,endX - startX);
+          const angle1 = angle - Math.PI/2;
+          const angle2 = angle + Math.PI/2;
+          const halfStartD = startD/2;
+          const halfEndD = endD/2;
+          const x1 = Math.cos(angle1) * halfStartD + startX;
+          const y1 = Math.sin(angle1) * halfStartD + startY;
+          const x2 = Math.cos(angle1) * halfEndD + endX;
+          const y2 = Math.sin(angle1) * halfEndD + endY;
+          const x3 = Math.cos(angle2) * halfEndD + endX;
+          const y3 = Math.sin(angle2) * halfEndD + endY;
+          const x4 = Math.cos(angle2) * halfStartD + startX;
+          const y4 = Math.sin(angle2) * halfStartD + startY;
 
-          const fragments:number[][] = [];
-          for(let i = 0;i<totalLength;i+=ratio){
-              let currentD = startD * (totalLength - i)/totalLength + endD * i/totalLength;
-              if(!fragments.length){
-                fragments.push([i,i]);
-                prevD = currentD;
-              }else{
-                const lastFragment = fragments[fragments.length - 1];
-                if(Math.abs(currentD - prevD)<ratio){
-                  lastFragment[1] = i;
-                }else{
-                  fragments.push([lastFragment[1],i]);
-                  prevD = currentD;
-                }
-              }
-          }
-          fragments[fragments.length - 1][1] = totalLength;
-          fragments.forEach(fragment=>{
-            const avgI = (fragment[0] + fragment[fragment.length - 1])/2;
-            let avgD = startD * (totalLength - avgI)/totalLength + endD * avgI/totalLength;
-            fragment[2] = avgD;
-          })
-          writingCtx.save();
-          writingCtx.strokeStyle = this.color;
-          writingCtx.fillStyle = this.color;
-          for(let i = 0;i<fragments.length;i++){
-            const [start,end,d] = fragments[i];
-            writingCtx.beginPath();
-            writingCtx.lineWidth = d;
-            writingCtx.setLineDash([0,start,end,Number.MAX_SAFE_INTEGER]);
-            const path = new Path2D(pathStr);
-            writingCtx.stroke(path);
-            if(d>=3){
-              const {x,y} = this.svgPath.getPointAtLength(start);
-              writingCtx.save();
-              writingCtx.globalAlpha = 1;
-              writingCtx.fillStyle = this.color;
-              writingCtx.beginPath();
-              writingCtx.arc(x,y,d/2 - 1,0,Math.PI * 2);
-              writingCtx.fill();
-              writingCtx.restore();
-            }
-          }
-          if(startD>=3){
-            writingCtx.save();
-            writingCtx.globalAlpha = 1;
-            writingCtx.fillStyle = this.color;
-            writingCtx.beginPath();
-            writingCtx.arc(startX,startY,startD/2 - 1,0,Math.PI * 2);
-            writingCtx.fill();
-            writingCtx.restore();
-          }
-          if(endD>=3){
-            writingCtx.save();
-            writingCtx.globalAlpha = 1;
-            writingCtx.fillStyle = this.color;
-            writingCtx.beginPath();
-            writingCtx.arc(endX,endY,endD/2 - 1,0,Math.PI * 2);
-            writingCtx.fill();
-            writingCtx.restore();
-          }
-          writingCtx.restore();
+          ctx.save();
+          ctx.fillStyle = this.color;
+          ctx.strokeStyle = this.color;
+          ctx.beginPath();
+          ctx.moveTo(x1,y1);
+          ctx.lineTo(x2,y2);
+          ctx.arc(endX,endY,halfEndD,angle1,angle2);
+          ctx.lineTo(x3,y3);
+          ctx.lineTo(x4,y4);
+          ctx.arc(startX,startY,halfStartD,angle2,angle1);
+          ctx.closePath();
+          ctx.fill();
+          writingCtx.drawImage(this.canvas,0,0);
+          ctx.clearRect(0,0,this.width,this.height);
         }else{
-          writingCtx.save();
-          writingCtx.lineJoin = 'round';
-          writingCtx.lineCap = 'round';
+          ctx.strokeStyle = this.color;
+          ctx.beginPath();
+          ctx.lineWidth = threshold;
+          ctx.moveTo(startX,startY);
+          ctx.lineTo(endX,endY);
+          writingCtx.drawImage(this.canvas,0,0);
+          ctx.clearRect(0,0,this.width,this.height);
+        }
+        if(this.lineStart){
           writingCtx.strokeStyle = this.color;
           writingCtx.beginPath();
-          writingCtx.lineWidth = d!;
-          const path = new Path2D(pathStr);
-          writingCtx.stroke(path);
-          console.log(d);
+          writingCtx.lineWidth = threshold;
+          writingCtx.moveTo(startX,startY);
         }
+        writingCtx.lineTo(endX,endY);
+        writingCtx.stroke();
       }
     }
     
@@ -154,9 +138,10 @@ export default class Eraser{
     }
     this.x = x;
     this.y = y;
-    if(pointerType === 'pen'){
+
+    if(pointerType){
       const minPressure = 0.2;
-      const maxPressure = 0.5;
+      const maxPressure = 0.8;
       pressure = Math.min(Math.max(minPressure,pressure),maxPressure);
       const d = this.voice * (.5 + 1.5 * (pressure - minPressure)/(maxPressure - minPressure));
       this.d = d;
