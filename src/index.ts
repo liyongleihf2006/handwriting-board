@@ -505,6 +505,11 @@ export default class Board {
         if (isPointInPath) {
           isToolShapeDoubleTouch = true;
           rotationCenter = { x: coords.pageX, y: coords.pageY };
+          turnStartAngle = Math.atan2(touches[1].pageY - touches[0].pageY,touches[1].pageX - touches[0].pageX) / Math.PI * 180;
+          if(turnStartAngle<0){
+            turnStartAngle += 360;
+          }
+        
         } else {
           isToolShapeDoubleTouch = false;
         }
@@ -577,9 +582,11 @@ export default class Board {
           this.toolShape.toolShapeCenterX += deltaX;
           this.toolShape.toolShapeCenterY += deltaY;
           if (event.touches.length === 2) {
-            const { angle } = getTripleTouchAngleAndCenter(event);
+            let { angle } = getTripleTouchAngleAndCenter(event);
+            if(angle<0){
+              angle += 360;
+            }
             let deltaAngle = angle - turnStartAngle;
-            deltaAngle %= 30;
             turnStartAngle = angle;
             const [newX, newY] = rotateCoordinate(rotationCenter.x, rotationCenter.y, deltaAngle, this.toolShape.toolShapeCenterX, this.toolShape.toolShapeCenterY);
             this.toolShape.toolShapeCenterX = newX;
