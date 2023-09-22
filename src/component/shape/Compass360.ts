@@ -18,9 +18,10 @@ export default class Compass {
 
   pointer1!: Path2D;
   pointer2!: Path2D;
-  cx!: number;
-  cy!: number;
-  angle!: number;
+
+  toolShapeCenterX = 500;
+  toolShapeCenterY = 300;
+  angle = 10;
 
   constructor(public ctx: CanvasRenderingContext2D, public cm: number, public mm: number, public container: HTMLDivElement, public getPageCoords: GetPageCoords, public toolShape: ToolShape) {
     this.outsideR = cm * 6;
@@ -28,7 +29,9 @@ export default class Compass {
     this.pointerW = cm * 1;
     this.loadEvent();
   }
-  calculateRotationAngle(cx: number, cy: number, dragStartX: number, dragStartY: number, dragEndX: number, dragEndY: number): number {
+  calculateRotationAngle(dragStartX: number, dragStartY: number, dragEndX: number, dragEndY: number): number {
+    const cx = this.toolShapeCenterX;
+    const cy = this.toolShapeCenterY;
     // 计算向量a的x和y分量
     const aX = dragStartX - cx;
     const aY = dragStartY - cy;
@@ -41,7 +44,6 @@ export default class Compass {
     const dotProduct = aX * bX + aY * bY; // 向量的点乘
     const aLength = Math.sqrt(aX * aX + aY * aY); // 向量a的长度
     const bLength = Math.sqrt(bX * bX + bY * bY); // 向量b的长度
-
     const cosTheta = dotProduct / (aLength * bLength); // 夹角的余弦值
     const theta = Math.acos(cosTheta); // 夹角的弧度值
 
@@ -79,15 +81,6 @@ export default class Compass {
         doTurn = true;
       }
     }
-    const handleTouchStart = (event: TouchEvent) => {
-      const touches = event.touches;
-      const coords = this.getPageCoords(touches);
-      if (touches.length === 1) {
-        turnPoinerStart(coords, event);
-      } else {
-        doTurn = false;
-      }
-    };
     const handleMouseStart = (event: MouseEvent) => {
       event.preventDefault();
       const { pageX, pageY } = event;
@@ -99,13 +92,15 @@ export default class Compass {
       dragStartY = dragEndY;
       dragEndX = coords.pageX;
       dragEndY = coords.pageY;
-      const deltaAngle = this.calculateRotationAngle(this.cx, this.cy, dragStartX, dragStartY, dragEndX, dragEndY);
-      if (movePointer1) {
-        this.firstPointerAngle += deltaAngle;
-      } else if (movePointer2) {
-        this.secondPointerAngle += deltaAngle;
+      const deltaAngle = this.calculateRotationAngle(dragStartX, dragStartY, dragEndX, dragEndY);
+      if(!isNaN(deltaAngle)){
+        if (movePointer1) {
+          this.firstPointerAngle += deltaAngle;
+        } else if (movePointer2) {
+          this.secondPointerAngle += deltaAngle;
+        }
       }
-      this.draw(this.cx, this.cy, this.angle);
+      this.draw();
       this.toolShape.reset();
     }
     const handleMouseMove = (event: MouseEvent) => {
@@ -116,34 +111,17 @@ export default class Compass {
         turnPointerMove(coords);
       }
     };
-    const handleTouchMove = (event: TouchEvent) => {
-      if (doTurn) {
-        event.stopImmediatePropagation();
-        const touches = event.touches;
-        const coords = this.getPageCoords(touches);
-        turnPointerMove(coords);
-      }
-    };
     const turnPointerEnd = () => {
       doTurn = false;
       movePointer1 = false;
       movePointer2 = false;
     };
-    const handleTouchEnd = () => {
-      turnPointerEnd();
-    };
     const handleMouseEnd = (event: MouseEvent) => {
       turnPointerEnd();
     };
-    if (isTouchDevice()) {
-      container.addEventListener("touchstart", handleTouchStart, { passive: true });
-      container.addEventListener("touchmove", handleTouchMove, { passive: true });
-      container.addEventListener("touchend", handleTouchEnd, { passive: true });
-    } else {
-      container.addEventListener("mousedown", handleMouseStart);
-      self.addEventListener("mousemove", handleMouseMove, { passive: true });
-      self.addEventListener("mouseup", handleMouseEnd, { passive: true });
-    }
+    container.addEventListener("pointerdown", handleMouseStart);
+    self.addEventListener("pointermove", handleMouseMove, { passive: true });
+    self.addEventListener("pointerup", handleMouseEnd, { passive: true });
   }
   getOutlineCtx(_x: number, _y: number, _angle: number, outlineVoice: number, strokeStyle: string) {
     const ctx = this.ctx;
@@ -324,7 +302,10 @@ export default class Compass {
     ctx.fill();
     ctx.restore();
   }
-  draw(cx: number, cy: number, angle: number) {
+  draw() {
+    const angle = this.angle;
+    const cx = this.toolShapeCenterX;
+    const cy = this.toolShapeCenterY;
     const ctx = this.ctx;
     const canvas = ctx.canvas;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -333,9 +314,6 @@ export default class Compass {
     this.pointer1 = this.drawPointer(ctx, cx, cy, angle, this.firstPointerAngle, 0, 'rgba(0,0,0,.08)');
     this.pointer2 = this.drawPointer(ctx, cx, cy, angle, this.secondPointerAngle, 0, 'rgba(0,0,0,.08)');
     this.drawFixedPoint(cx, cy, angle);
-    this.cx = cx;
-    this.cy = cy;
-    this.angle = angle;
   }
   isPointInPath(x: number, y: number, fillRule: CanvasFillRule) {
     const ctx = this.ctx;

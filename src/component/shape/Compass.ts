@@ -11,6 +11,9 @@ export default class Compass{
   innerStartAngle = 180;
   innerEndAngle = 360;
 
+  toolShapeCenterX = 500;
+  toolShapeCenterY = 300;
+  angle = 10;
 
 
   constructor(public ctx:CanvasRenderingContext2D,public cm:number,public mm:number){
@@ -167,7 +170,10 @@ export default class Compass{
     ctx.stroke();
     ctx.restore();
   }
-  draw(cx:number,cy:number,angle:number){
+  draw(){
+    const angle = this.angle;
+    const cx = this.toolShapeCenterX;
+    const cy = this.toolShapeCenterY;
     const ctx = this.ctx;
     const canvas = ctx.canvas;
     ctx.clearRect(0,0,canvas.width,canvas.height);

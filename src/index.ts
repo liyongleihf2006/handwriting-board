@@ -177,16 +177,12 @@ export default class Board {
 
   private toolShape: ToolShape;
   private activateToolShape = false;
-  private toolShapeCenterX: number;
-  private toolShapeCenterY: number;
-  private toolShapeAngle: number;
   private background: Background;
   private ruleAuxiliary: RuleAuxiliary;
   private border: Border;
   private writing: Writing;
   private eraser: Eraser;
   private eraserHasContent = false;
-  private toolShapeType: ShapeType = ShapeType.RULER;
   private brushDrawing:BrushDrawing;
 
   scrollRange: ScrollRange;
@@ -298,9 +294,6 @@ export default class Board {
     this.container.append(this.writing.canvas);
     this.toolShape = new ToolShape(this.width, this.height, this.voice, container, this.getPageCoords);
     this.container.append(this.toolShape.canvas);
-    this.toolShapeCenterX = 500;
-    this.toolShapeCenterY = 300;
-    this.toolShapeAngle = 10;
     this.eraser = new Eraser(this.width, this.height);
     this.container.append(this.eraser.canvas);
     this.brushDrawing = new BrushDrawing(this.width,this.height,this.voice,this.writing);
@@ -331,15 +324,15 @@ export default class Board {
   }
   showToolShape() {
     this.useShapeType = true;
-    this.draw();
+    this.drawToolShape();
   }
   hideToolShape() {
     this.useShapeType = false;
-    this.draw();
+    this.drawToolShape();
   }
   setToolShapeType(shapeType: ShapeType) {
-    this.toolShapeType = shapeType;
-    this.draw();
+    this.toolShape.toolShapeType = shapeType;
+    this.drawToolShape();
   }
   private adjustOffset() {
     const [[minX, maxX], [minY, maxY]] = this.scrollRange;
@@ -580,17 +573,18 @@ export default class Board {
         if (this.useShapeType && isToolShapeDoubleTouch) {
           const deltaX = dragEndX - dragStartX;
           const deltaY = dragEndY - dragStartY;
-          this.toolShapeCenterX += deltaX;
-          this.toolShapeCenterY += deltaY;
+
+          this.toolShape.toolShapeCenterX += deltaX;
+          this.toolShape.toolShapeCenterY += deltaY;
           if (event.touches.length === 2) {
             const { angle } = getTripleTouchAngleAndCenter(event);
             let deltaAngle = angle - turnStartAngle;
             deltaAngle %= 30;
             turnStartAngle = angle;
-            const [newX, newY] = rotateCoordinate(rotationCenter.x, rotationCenter.y, deltaAngle, this.toolShapeCenterX, this.toolShapeCenterY);
-            this.toolShapeCenterX = newX;
-            this.toolShapeCenterY = newY;
-            this.toolShapeAngle += deltaAngle;
+            const [newX, newY] = rotateCoordinate(rotationCenter.x, rotationCenter.y, deltaAngle, this.toolShape.toolShapeCenterX, this.toolShape.toolShapeCenterY);
+            this.toolShape.toolShapeCenterX = newX;
+            this.toolShape.toolShapeCenterY = newY;
+            this.toolShape.angle += deltaAngle;
             this.draw();
           }
         } else {
@@ -749,10 +743,10 @@ export default class Board {
     this.ruleAuxiliary.canvas.style.opacity = this.rule ? '1' : '0';
   }
   private drawToolShape() {
-    if (this.useShapeType) {
-      this.toolShape.draw(this.toolShapeCenterX, this.toolShapeCenterY, this.toolShapeAngle, this.toolShapeType);
-    }
     this.toolShape.canvas.style.opacity = this.useShapeType ? '1' : '0';
+    if(this.useShapeType){
+      this.toolShape.draw();
+    }
   }
 }
 export { Board };

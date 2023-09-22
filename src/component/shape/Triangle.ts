@@ -7,6 +7,9 @@ export default class Triangle{
   marginC = 0;
   gap = 0;
 
+  toolShapeCenterX = 500;
+  toolShapeCenterY = 300;
+  angle = 10;
 
   constructor(public ctx:CanvasRenderingContext2D,public cm:number,public mm:number,public degreeNumberH:number,public degreeNumberV:number,public marginH:number,public marginV:number){
     this.marginC = this.cm;
@@ -54,7 +57,10 @@ export default class Triangle{
     this.path = path;
     return path;
   }
-  draw(cx:number,cy:number,angle:number){
+  draw(){
+    const angle = this.angle;
+    const cx = this.toolShapeCenterX;
+    const cy = this.toolShapeCenterY;
     const ctx = this.ctx;
     const canvas = ctx.canvas;
     const marginC = this.marginC;

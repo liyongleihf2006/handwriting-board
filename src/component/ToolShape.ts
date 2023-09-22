@@ -19,10 +19,7 @@ export default class ToolShape {
   // 像素点采集宽度
   gatherAreaWidth = 10;
   prevPoint: [number, number] | null = null;
-  private _x!: number;
-  private _y!: number;
-  private _angle!: number;
-  private _toolShapeType!: ShapeType;
+  private _toolShapeType = ShapeType.RULER;
   private strokeStyle!: string;
   cm = 0;
   mm = 0;
@@ -50,26 +47,26 @@ export default class ToolShape {
     this.rightAngleTriangle = new Triangle(this.ctx, this.cm, this.mm, 9, 5, this.cm * 3, this.cm * 1);
     this.isoscelesTriangle = new Triangle(this.ctx, this.cm, this.mm, 6, 6, this.cm * 2, this.cm * 2);
   }
-  set x(x: number) {
-    this._x = x;
+  set toolShapeCenterX(x: number) {
+    this.shape.toolShapeCenterX = x;
     this.reset();
   }
-  get x() {
-    return this._x;
+  get toolShapeCenterX() {
+    return this.shape.toolShapeCenterX;
   }
-  set y(y: number) {
-    this._y = y;
+  set toolShapeCenterY(y: number) {
+    this.shape.toolShapeCenterY = y;
     this.reset();
   }
-  get y() {
-    return this._y;
+  get toolShapeCenterY() {
+    return this.shape.toolShapeCenterY;
   }
   set angle(angle: number) {
-    this._angle = angle;
+    this.shape.angle = angle;
     this.reset();
   }
   get angle() {
-    return this._angle;
+    return this.shape.angle;
   }
   set toolShapeType(toolShapeType: ShapeType) {
     this._toolShapeType = toolShapeType;
@@ -93,6 +90,7 @@ export default class ToolShape {
   reset() {
     this.outline = null;
     this.prevPoint = null;
+    this.draw();
   }
   getGathers(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number) {
     const topLeftX = Math.min(x1, x2) - gatherAreaWidth / 2;
@@ -173,7 +171,7 @@ export default class ToolShape {
     }
   }
   getOutlineCtx(outlineVoice: number, strokeStyle: string) {
-    return this.shape.getOutlineCtx(this._x, this._y, this._angle, outlineVoice, strokeStyle);
+    return this.shape.getOutlineCtx(this.toolShapeCenterX, this.toolShapeCenterY, this.angle, outlineVoice, strokeStyle);
   }
   getOutline(imageData: ImageData) {
     const data = imageData.data;
@@ -208,15 +206,9 @@ export default class ToolShape {
   isPointInPath(x: number, y: number, fillRule: CanvasFillRule) {
     return this.shape.isPointInPath(x, y, fillRule);
   }
-  draw(x: number, y: number, angle: number, toolShapeType: ShapeType) {
-    if (this.x !== x || this.y !== y || this.angle !== angle || this.toolShapeType !== toolShapeType) {
-      this.x = x;
-      this.y = y;
-      this.angle = angle;
-      this.toolShapeType = toolShapeType;
-      const ctx = this.ctx;
-      ctx.clearRect(0, 0, this.w, this.h);
-      this.shape.draw(this._x, this._y, this._angle);
-    }
+  draw() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.w, this.h);
+    this.shape.draw();
   }
 }

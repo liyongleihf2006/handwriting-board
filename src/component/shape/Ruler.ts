@@ -6,7 +6,10 @@ export default class Ruler{
   height = 0;
   marginH = 0;
   degreeNumber = 20;
-
+  
+  toolShapeCenterX = 500;
+  toolShapeCenterY = 300;
+  angle = 10;
 
   constructor(public ctx:CanvasRenderingContext2D,public cm:number,public mm:number){
     this.marginH = this.mm * 5;
@@ -58,7 +61,10 @@ export default class Ruler{
     this.path = path;
     return path;
   }
-  draw(cx:number,cy:number,angle:number){
+  draw(){
+    const angle = this.angle;
+    const cx = this.toolShapeCenterX;
+    const cy = this.toolShapeCenterY;
     const ctx = this.ctx;
     const canvas = ctx.canvas;
     const marginH = this.marginH;
