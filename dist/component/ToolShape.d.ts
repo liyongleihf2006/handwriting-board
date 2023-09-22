@@ -18,9 +18,6 @@ export default class ToolShape {
     longestDistance: number;
     gatherAreaWidth: number;
     prevPoint: [number, number] | null;
-    private _x;
-    private _y;
-    private _angle;
     private _toolShapeType;
     private strokeStyle;
     cm: number;
@@ -35,10 +32,10 @@ export default class ToolShape {
     rightAngleTriangle: Triangle;
     isoscelesTriangle: Triangle;
     constructor(w: number, h: number, voice: number, container: HTMLDivElement, getPageCoords: GetPageCoords);
-    set x(x: number);
-    get x(): number;
-    set y(y: number);
-    get y(): number;
+    set toolShapeCenterX(x: number);
+    get toolShapeCenterX(): number;
+    set toolShapeCenterY(y: number);
+    get toolShapeCenterY(): number;
     set angle(angle: number);
     get angle(): number;
     set toolShapeType(toolShapeType: ShapeType);
@@ -58,5 +55,5 @@ export default class ToolShape {
     getOutline(imageData: ImageData): [number, number, Uint8ClampedArray][];
     getOutlineMap(outline: [number, number, Uint8ClampedArray][]): Record<number, Record<number, Uint8ClampedArray>>;
     isPointInPath(x: number, y: number, fillRule: CanvasFillRule): boolean;
-    draw(x: number, y: number, angle: number, toolShapeType: ShapeType): void;
+    draw(): void;
 }

@@ -17,16 +17,12 @@ export default class Board {
     private debounceBindOnChange;
     private toolShape;
     private activateToolShape;
-    private toolShapeCenterX;
-    private toolShapeCenterY;
-    private toolShapeAngle;
     private background;
     private ruleAuxiliary;
     private border;
     private writing;
     private eraser;
     private eraserHasContent;
-    private toolShapeType;
     private brushDrawing;
     scrollRange: ScrollRange;
     scrollDirection: ScrollDirection;

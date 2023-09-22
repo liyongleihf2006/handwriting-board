@@ -4,7 +4,6 @@ export default class Eraser {
     writing: Writing;
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
-    svgPath: SVGPathElement;
     writeModel: WriteModel;
     width: number;
     height: number;

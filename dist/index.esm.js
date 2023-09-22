@@ -147,6 +147,9 @@ class Ruler {
     height = 0;
     marginH = 0;
     degreeNumber = 20;
+    toolShapeCenterX = 500;
+    toolShapeCenterY = 300;
+    angle = 10;
     constructor(ctx, cm, mm) {
         this.ctx = ctx;
         this.cm = cm;
@@ -198,7 +201,10 @@ class Ruler {
         this.path = path;
         return path;
     }
-    draw(cx, cy, angle) {
+    draw() {
+        const angle = this.angle;
+        const cx = this.toolShapeCenterX;
+        const cy = this.toolShapeCenterY;
         const ctx = this.ctx;
         const canvas = ctx.canvas;
         const marginH = this.marginH;
@@ -270,6 +276,9 @@ let Compass$1 = class Compass {
     endAngle = 370;
     innerStartAngle = 180;
     innerEndAngle = 360;
+    toolShapeCenterX = 500;
+    toolShapeCenterY = 300;
+    angle = 10;
     constructor(ctx, cm, mm) {
         this.ctx = ctx;
         this.cm = cm;
@@ -409,7 +418,10 @@ let Compass$1 = class Compass {
         ctx.stroke();
         ctx.restore();
     }
-    draw(cx, cy, angle) {
+    draw() {
+        const angle = this.angle;
+        const cx = this.toolShapeCenterX;
+        const cy = this.toolShapeCenterY;
         const ctx = this.ctx;
         const canvas = ctx.canvas;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -427,9 +439,6 @@ let Compass$1 = class Compass {
     }
 };
 
-function isTouchDevice$1() {
-    return 'ontouchstart' in self;
-}
 class Compass {
     ctx;
     cm;
@@ -447,9 +456,9 @@ class Compass {
     secondPointerAngle = 30;
     pointer1;
     pointer2;
-    cx;
-    cy;
-    angle;
+    toolShapeCenterX = 500;
+    toolShapeCenterY = 300;
+    angle = 10;
     constructor(ctx, cm, mm, container, getPageCoords, toolShape) {
         this.ctx = ctx;
         this.cm = cm;
@@ -462,7 +471,9 @@ class Compass {
         this.pointerW = cm * 1;
         this.loadEvent();
     }
-    calculateRotationAngle(cx, cy, dragStartX, dragStartY, dragEndX, dragEndY) {
+    calculateRotationAngle(dragStartX, dragStartY, dragEndX, dragEndY) {
+        const cx = this.toolShapeCenterX;
+        const cy = this.toolShapeCenterY;
         // 计算向量a的x和y分量
         const aX = dragStartX - cx;
         const aY = dragStartY - cy;
@@ -508,16 +519,6 @@ class Compass {
                 doTurn = true;
             }
         };
-        const handleTouchStart = (event) => {
-            const touches = event.touches;
-            const coords = this.getPageCoords(touches);
-            if (touches.length === 1) {
-                turnPoinerStart(coords, event);
-            }
-            else {
-                doTurn = false;
-            }
-        };
         const handleMouseStart = (event) => {
             event.preventDefault();
             const { pageX, pageY } = event;
@@ -529,14 +530,16 @@ class Compass {
             dragStartY = dragEndY;
             dragEndX = coords.pageX;
             dragEndY = coords.pageY;
-            const deltaAngle = this.calculateRotationAngle(this.cx, this.cy, dragStartX, dragStartY, dragEndX, dragEndY);
-            if (movePointer1) {
-                this.firstPointerAngle += deltaAngle;
+            const deltaAngle = this.calculateRotationAngle(dragStartX, dragStartY, dragEndX, dragEndY);
+            if (!isNaN(deltaAngle)) {
+                if (movePointer1) {
+                    this.firstPointerAngle += deltaAngle;
+                }
+                else if (movePointer2) {
+                    this.secondPointerAngle += deltaAngle;
+                }
             }
-            else if (movePointer2) {
-                this.secondPointerAngle += deltaAngle;
-            }
-            this.draw(this.cx, this.cy, this.angle);
+            this.draw();
             this.toolShape.reset();
         };
         const handleMouseMove = (event) => {
@@ -547,35 +550,17 @@ class Compass {
                 turnPointerMove(coords);
             }
         };
-        const handleTouchMove = (event) => {
-            if (doTurn) {
-                event.stopImmediatePropagation();
-                const touches = event.touches;
-                const coords = this.getPageCoords(touches);
-                turnPointerMove(coords);
-            }
-        };
         const turnPointerEnd = () => {
             doTurn = false;
             movePointer1 = false;
             movePointer2 = false;
         };
-        const handleTouchEnd = () => {
-            turnPointerEnd();
-        };
         const handleMouseEnd = (event) => {
             turnPointerEnd();
         };
-        if (isTouchDevice$1()) {
-            container.addEventListener("touchstart", handleTouchStart, { passive: true });
-            container.addEventListener("touchmove", handleTouchMove, { passive: true });
-            container.addEventListener("touchend", handleTouchEnd, { passive: true });
-        }
-        else {
-            container.addEventListener("mousedown", handleMouseStart);
-            self.addEventListener("mousemove", handleMouseMove, { passive: true });
-            self.addEventListener("mouseup", handleMouseEnd, { passive: true });
-        }
+        container.addEventListener("pointerdown", handleMouseStart);
+        self.addEventListener("pointermove", handleMouseMove, { passive: true });
+        self.addEventListener("pointerup", handleMouseEnd, { passive: true });
     }
     getOutlineCtx(_x, _y, _angle, outlineVoice, strokeStyle) {
         const ctx = this.ctx;
@@ -738,7 +723,10 @@ class Compass {
         ctx.fill();
         ctx.restore();
     }
-    draw(cx, cy, angle) {
+    draw() {
+        const angle = this.angle;
+        const cx = this.toolShapeCenterX;
+        const cy = this.toolShapeCenterY;
         const ctx = this.ctx;
         const canvas = ctx.canvas;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -747,9 +735,6 @@ class Compass {
         this.pointer1 = this.drawPointer(ctx, cx, cy, angle, this.firstPointerAngle, 0, 'rgba(0,0,0,.08)');
         this.pointer2 = this.drawPointer(ctx, cx, cy, angle, this.secondPointerAngle, 0, 'rgba(0,0,0,.08)');
         this.drawFixedPoint(cx, cy, angle);
-        this.cx = cx;
-        this.cy = cy;
-        this.angle = angle;
     }
     isPointInPath(x, y, fillRule) {
         const ctx = this.ctx;
@@ -780,6 +765,9 @@ class Triangle {
     height = 0;
     marginC = 0;
     gap = 0;
+    toolShapeCenterX = 500;
+    toolShapeCenterY = 300;
+    angle = 10;
     constructor(ctx, cm, mm, degreeNumberH, degreeNumberV, marginH, marginV) {
         this.ctx = ctx;
         this.cm = cm;
@@ -829,7 +817,10 @@ class Triangle {
         this.path = path;
         return path;
     }
-    draw(cx, cy, angle) {
+    draw() {
+        const angle = this.angle;
+        const cx = this.toolShapeCenterX;
+        const cy = this.toolShapeCenterY;
         const ctx = this.ctx;
         const canvas = ctx.canvas;
         const marginC = this.marginC;
@@ -925,10 +916,7 @@ class ToolShape {
     // 像素点采集宽度
     gatherAreaWidth = 10;
     prevPoint = null;
-    _x;
-    _y;
-    _angle;
-    _toolShapeType;
+    _toolShapeType = ShapeType.RULER;
     strokeStyle;
     cm = 0;
     mm = 0;
@@ -956,26 +944,26 @@ class ToolShape {
         this.rightAngleTriangle = new Triangle(this.ctx, this.cm, this.mm, 9, 5, this.cm * 3, this.cm * 1);
         this.isoscelesTriangle = new Triangle(this.ctx, this.cm, this.mm, 6, 6, this.cm * 2, this.cm * 2);
     }
-    set x(x) {
-        this._x = x;
+    set toolShapeCenterX(x) {
+        this.shape.toolShapeCenterX = x;
         this.reset();
     }
-    get x() {
-        return this._x;
+    get toolShapeCenterX() {
+        return this.shape.toolShapeCenterX;
     }
-    set y(y) {
-        this._y = y;
+    set toolShapeCenterY(y) {
+        this.shape.toolShapeCenterY = y;
         this.reset();
     }
-    get y() {
-        return this._y;
+    get toolShapeCenterY() {
+        return this.shape.toolShapeCenterY;
     }
     set angle(angle) {
-        this._angle = angle;
+        this.shape.angle = angle;
         this.reset();
     }
     get angle() {
-        return this._angle;
+        return this.shape.angle;
     }
     set toolShapeType(toolShapeType) {
         this._toolShapeType = toolShapeType;
@@ -1009,6 +997,7 @@ class ToolShape {
     reset() {
         this.outline = null;
         this.prevPoint = null;
+        this.draw();
     }
     getGathers(x1, y1, x2, y2, gatherAreaWidth) {
         const topLeftX = Math.min(x1, x2) - gatherAreaWidth / 2;
@@ -1087,7 +1076,7 @@ class ToolShape {
         }
     }
     getOutlineCtx(outlineVoice, strokeStyle) {
-        return this.shape.getOutlineCtx(this._x, this._y, this._angle, outlineVoice, strokeStyle);
+        return this.shape.getOutlineCtx(this.toolShapeCenterX, this.toolShapeCenterY, this.angle, outlineVoice, strokeStyle);
     }
     getOutline(imageData) {
         const data = imageData.data;
@@ -1122,16 +1111,10 @@ class ToolShape {
     isPointInPath(x, y, fillRule) {
         return this.shape.isPointInPath(x, y, fillRule);
     }
-    draw(x, y, angle, toolShapeType) {
-        if (this.x !== x || this.y !== y || this.angle !== angle || this.toolShapeType !== toolShapeType) {
-            this.x = x;
-            this.y = y;
-            this.angle = angle;
-            this.toolShapeType = toolShapeType;
-            const ctx = this.ctx;
-            ctx.clearRect(0, 0, this.w, this.h);
-            this.shape.draw(this._x, this._y, this._angle);
-        }
+    draw() {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.w, this.h);
+        this.shape.draw();
     }
 }
 
@@ -1360,6 +1343,8 @@ class Writing {
         this.height = height * this.scale;
         this.canvas = generateCanvas(this.width, this.height);
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
     }
     refresh(worldOffsetX, worldOffsetY) {
         this.ctx.clearRect(0, 0, this.width, this.height);
@@ -1674,7 +1659,6 @@ class Eraser {
     writing;
     canvas;
     ctx;
-    svgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     writeModel = WriteModel.WRITE;
     width;
     height;
@@ -1692,7 +1676,7 @@ class Eraser {
         this.height = height;
         this.voice = voice;
         this.canvas = generateCanvas(this.width, this.height);
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     }
     reset(color) {
         this.color = color;
@@ -1715,91 +1699,33 @@ class Eraser {
         const startD = prevD;
         if (startX !== null && startY !== null && startD !== null) {
             if (startX !== endX && startY !== endY) {
-                const pathStr = `M${startX},${startY}L${endX},${endY}`;
-                if (pointerType === 'pen') {
-                    this.svgPath.setAttribute('d', pathStr);
-                    const totalLength = this.svgPath.getTotalLength();
-                    if (!totalLength) {
-                        return;
-                    }
-                    const ratio = 1 / (window.devicePixelRatio * 2);
-                    let prevD = -1 * this.voice;
-                    const fragments = [];
-                    for (let i = 0; i < totalLength; i += ratio) {
-                        let currentD = startD * (totalLength - i) / totalLength + endD * i / totalLength;
-                        if (!fragments.length) {
-                            fragments.push([i, i]);
-                            prevD = currentD;
-                        }
-                        else {
-                            const lastFragment = fragments[fragments.length - 1];
-                            if (Math.abs(currentD - prevD) < ratio) {
-                                lastFragment[1] = i;
-                            }
-                            else {
-                                fragments.push([lastFragment[1], i]);
-                                prevD = currentD;
-                            }
-                        }
-                    }
-                    fragments[fragments.length - 1][1] = totalLength;
-                    fragments.forEach(fragment => {
-                        const avgI = (fragment[0] + fragment[fragment.length - 1]) / 2;
-                        let avgD = startD * (totalLength - avgI) / totalLength + endD * avgI / totalLength;
-                        fragment[2] = avgD;
-                    });
-                    writingCtx.save();
-                    writingCtx.strokeStyle = this.color;
-                    writingCtx.fillStyle = this.color;
-                    for (let i = 0; i < fragments.length; i++) {
-                        const [start, end, d] = fragments[i];
-                        writingCtx.beginPath();
-                        writingCtx.lineWidth = d;
-                        writingCtx.setLineDash([0, start, end, Number.MAX_SAFE_INTEGER]);
-                        const path = new Path2D(pathStr);
-                        writingCtx.stroke(path);
-                        if (d >= 3) {
-                            const { x, y } = this.svgPath.getPointAtLength(start);
-                            writingCtx.save();
-                            writingCtx.globalAlpha = 1;
-                            writingCtx.fillStyle = this.color;
-                            writingCtx.beginPath();
-                            writingCtx.arc(x, y, d / 2 - 1, 0, Math.PI * 2);
-                            writingCtx.fill();
-                            writingCtx.restore();
-                        }
-                    }
-                    if (startD >= 3) {
-                        writingCtx.save();
-                        writingCtx.globalAlpha = 1;
-                        writingCtx.fillStyle = this.color;
-                        writingCtx.beginPath();
-                        writingCtx.arc(startX, startY, startD / 2 - 1, 0, Math.PI * 2);
-                        writingCtx.fill();
-                        writingCtx.restore();
-                    }
-                    if (endD >= 3) {
-                        writingCtx.save();
-                        writingCtx.globalAlpha = 1;
-                        writingCtx.fillStyle = this.color;
-                        writingCtx.beginPath();
-                        writingCtx.arc(endX, endY, endD / 2 - 1, 0, Math.PI * 2);
-                        writingCtx.fill();
-                        writingCtx.restore();
-                    }
-                    writingCtx.restore();
-                }
-                else {
-                    writingCtx.save();
-                    writingCtx.lineJoin = 'round';
-                    writingCtx.lineCap = 'round';
-                    writingCtx.strokeStyle = this.color;
-                    writingCtx.beginPath();
-                    writingCtx.lineWidth = d;
-                    const path = new Path2D(pathStr);
-                    writingCtx.stroke(path);
-                    console.log(d);
-                }
+                const threshold = 0.8;
+                const angle = Math.atan2(endY - startY, endX - startX);
+                const angle1 = angle - Math.PI / 2;
+                const angle2 = angle + Math.PI / 2;
+                const halfStartD = Math.max(startD / 2, threshold / 2);
+                const halfEndD = Math.max(endD / 2, threshold / 2);
+                const x1 = Math.cos(angle1) * halfStartD + startX;
+                const y1 = Math.sin(angle1) * halfStartD + startY;
+                const x2 = Math.cos(angle1) * halfEndD + endX;
+                const y2 = Math.sin(angle1) * halfEndD + endY;
+                const x3 = Math.cos(angle2) * halfEndD + endX;
+                const y3 = Math.sin(angle2) * halfEndD + endY;
+                const x4 = Math.cos(angle2) * halfStartD + startX;
+                const y4 = Math.sin(angle2) * halfStartD + startY;
+                writingCtx.save();
+                writingCtx.fillStyle = this.color;
+                writingCtx.strokeStyle = this.color;
+                writingCtx.beginPath();
+                writingCtx.moveTo(x1, y1);
+                writingCtx.lineTo(x2, y2);
+                writingCtx.arc(endX, endY, halfEndD, angle1, angle2);
+                writingCtx.lineTo(x3, y3);
+                writingCtx.lineTo(x4, y4);
+                writingCtx.arc(startX, startY, halfStartD, angle2, angle1);
+                writingCtx.closePath();
+                writingCtx.fill();
+                writingCtx.restore();
             }
         }
     }
@@ -1815,9 +1741,9 @@ class Eraser {
         }
         this.x = x;
         this.y = y;
-        if (pointerType === 'pen') {
-            const minPressure = 0.2;
-            const maxPressure = 0.5;
+        if (pointerType) {
+            const minPressure = 0.1;
+            const maxPressure = 0.9;
             pressure = Math.min(Math.max(minPressure, pressure), maxPressure);
             const d = this.voice * (.5 + 1.5 * (pressure - minPressure) / (maxPressure - minPressure));
             this.d = d;
@@ -2009,16 +1935,12 @@ class Board {
     debounceBindOnChange;
     toolShape;
     activateToolShape = false;
-    toolShapeCenterX;
-    toolShapeCenterY;
-    toolShapeAngle;
     background;
     ruleAuxiliary;
     border;
     writing;
     eraser;
     eraserHasContent = false;
-    toolShapeType = ShapeType.RULER;
     brushDrawing;
     scrollRange;
     scrollDirection;
@@ -2129,9 +2051,6 @@ class Board {
         this.container.append(this.writing.canvas);
         this.toolShape = new ToolShape(this.width, this.height, this.voice, container, this.getPageCoords);
         this.container.append(this.toolShape.canvas);
-        this.toolShapeCenterX = 500;
-        this.toolShapeCenterY = 300;
-        this.toolShapeAngle = 10;
         this.eraser = new Eraser$1(this.width, this.height);
         this.container.append(this.eraser.canvas);
         this.brushDrawing = new Eraser(this.width, this.height, this.voice, this.writing);
@@ -2143,7 +2062,6 @@ class Board {
         this.voice = voice;
         this.brushDrawing.voice = voice;
         this.brushDrawing.d = voice;
-        this.brushDrawing.maxD = voice * 2;
     }
     showBG() {
         this.enableBG = true;
@@ -2163,15 +2081,15 @@ class Board {
     }
     showToolShape() {
         this.useShapeType = true;
-        this.draw();
+        this.drawToolShape();
     }
     hideToolShape() {
         this.useShapeType = false;
-        this.draw();
+        this.drawToolShape();
     }
     setToolShapeType(shapeType) {
-        this.toolShapeType = shapeType;
-        this.draw();
+        this.toolShape.toolShapeType = shapeType;
+        this.drawToolShape();
     }
     adjustOffset() {
         const [[minX, maxX], [minY, maxY]] = this.scrollRange;
@@ -2341,6 +2259,10 @@ class Board {
                 if (isPointInPath) {
                     isToolShapeDoubleTouch = true;
                     rotationCenter = { x: coords.pageX, y: coords.pageY };
+                    turnStartAngle = Math.atan2(touches[1].pageY - touches[0].pageY, touches[1].pageX - touches[0].pageX) / Math.PI * 180;
+                    if (turnStartAngle < 0) {
+                        turnStartAngle += 360;
+                    }
                 }
                 else {
                     isToolShapeDoubleTouch = false;
@@ -2415,17 +2337,19 @@ class Board {
                 if (this.useShapeType && isToolShapeDoubleTouch) {
                     const deltaX = dragEndX - dragStartX;
                     const deltaY = dragEndY - dragStartY;
-                    this.toolShapeCenterX += deltaX;
-                    this.toolShapeCenterY += deltaY;
+                    this.toolShape.toolShapeCenterX += deltaX;
+                    this.toolShape.toolShapeCenterY += deltaY;
                     if (event.touches.length === 2) {
-                        const { angle } = getTripleTouchAngleAndCenter(event);
+                        let { angle } = getTripleTouchAngleAndCenter(event);
+                        if (angle < 0) {
+                            angle += 360;
+                        }
                         let deltaAngle = angle - turnStartAngle;
-                        deltaAngle %= 30;
                         turnStartAngle = angle;
-                        const [newX, newY] = rotateCoordinate(rotationCenter.x, rotationCenter.y, deltaAngle, this.toolShapeCenterX, this.toolShapeCenterY);
-                        this.toolShapeCenterX = newX;
-                        this.toolShapeCenterY = newY;
-                        this.toolShapeAngle += deltaAngle;
+                        const [newX, newY] = rotateCoordinate(rotationCenter.x, rotationCenter.y, deltaAngle, this.toolShape.toolShapeCenterX, this.toolShape.toolShapeCenterY);
+                        this.toolShape.toolShapeCenterX = newX;
+                        this.toolShape.toolShapeCenterY = newY;
+                        this.toolShape.angle += deltaAngle;
                         this.draw();
                     }
                 }
@@ -2590,10 +2514,10 @@ class Board {
         this.ruleAuxiliary.canvas.style.opacity = this.rule ? '1' : '0';
     }
     drawToolShape() {
-        if (this.useShapeType) {
-            this.toolShape.draw(this.toolShapeCenterX, this.toolShapeCenterY, this.toolShapeAngle, this.toolShapeType);
-        }
         this.toolShape.canvas.style.opacity = this.useShapeType ? '1' : '0';
+        if (this.useShapeType) {
+            this.toolShape.draw();
+        }
     }
 }
 

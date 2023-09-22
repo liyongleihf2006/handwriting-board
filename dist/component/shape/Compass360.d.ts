@@ -17,11 +17,11 @@ export default class Compass {
     secondPointerAngle: number;
     pointer1: Path2D;
     pointer2: Path2D;
-    cx: number;
-    cy: number;
+    toolShapeCenterX: number;
+    toolShapeCenterY: number;
     angle: number;
     constructor(ctx: CanvasRenderingContext2D, cm: number, mm: number, container: HTMLDivElement, getPageCoords: GetPageCoords, toolShape: ToolShape);
-    calculateRotationAngle(cx: number, cy: number, dragStartX: number, dragStartY: number, dragEndX: number, dragEndY: number): number;
+    calculateRotationAngle(dragStartX: number, dragStartY: number, dragEndX: number, dragEndY: number): number;
     private loadEvent;
     getOutlineCtx(_x: number, _y: number, _angle: number, outlineVoice: number, strokeStyle: string): OffscreenCanvasRenderingContext2D;
     generatorOuterBorder(_cx: number, _cy: number, _angle: number): Path2D;
@@ -31,6 +31,6 @@ export default class Compass {
     drawBorder(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, cx: number, cy: number, angle: number, outlineVoice: number, strokeStyle: string): void;
     drawPointer(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, cx: number, cy: number, angle: number, pointerAngle: number, outlineVoice: number, fillStyle: string): Path2D;
     drawFixedPoint(cx: number, cy: number, angle: number): void;
-    draw(cx: number, cy: number, angle: number): void;
+    draw(): void;
     isPointInPath(x: number, y: number, fillRule: CanvasFillRule): boolean;
 }
