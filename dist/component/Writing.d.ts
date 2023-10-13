@@ -14,6 +14,7 @@ export default class Writing {
     clear(): void;
     doClean(x1: number, y1: number, x2: number, y2: number, r: number, determineIfThereHasContent?: boolean): boolean;
     pushImageData(worldOffsetX: number, worldOffsetY: number): void;
+    washStore(): void;
     putImageData(worldOffsetX: number, worldOffsetY: number): void;
     getWholeCanvas(): HTMLCanvasElement;
     getPaperCanvas(): HTMLCanvasElement;
