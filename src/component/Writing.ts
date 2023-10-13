@@ -1,19 +1,19 @@
-import type {Store} from '../type';
+import type {PreStore,GatherAreas,GatherAreasObj} from '../type';
 
 import { generateCanvas } from '../utils';
 export default class Writing{
 
-  store:Store = [];
+  store:PreStore;
 
   canvas:HTMLCanvasElement;
   ctx:CanvasRenderingContext2D;
   scale = 1;
   width:number;
   height:number;
-
   constructor(
     width:number,
-    height:number
+    height:number,
+    store:PreStore
   ){
     this.width = width * this.scale;
     this.height = height * this.scale;
@@ -21,51 +21,138 @@ export default class Writing{
     this.ctx = this.canvas.getContext('2d',{ willReadFrequently: true })!;
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = 'high';
+    this.store = store;
+  }
+  resize(width:number,height:number){
+    this.width = width;
+    this.height = height;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
   }
   refresh(worldOffsetX:number,worldOffsetY:number){
     this.ctx.clearRect(0,0,this.width,this.height);
     this.putImageData(worldOffsetX,worldOffsetY);
   }
-  singlePointsWriting(points:{x:number,y:number,fillStyle:string}[]){
+  singlePointsWriting(gatherAreasObj:GatherAreasObj){
     const ctx = this.ctx;
-    const len = points.length;
-    for(let i = 0;i<len;i++){
-      ctx.save();
-      ctx.beginPath();
-      const {x,y,fillStyle} = points[i];
-      ctx.fillStyle = fillStyle;
-      ctx.fillRect(x * this.scale,y * this.scale,1,1);
-      ctx.restore();
-    }
+    const {x,y,width,height,fragments} = gatherAreasObj;
+    const imageData = ctx.getImageData(x,y,width,height);
+    const data = imageData.data;
+    const rowLen = width * 4;
+    for(let i = 0;i<fragments.length;i++){
+      const {data:fdata} = fragments[i];
+      const baseStart = rowLen * i;
+      for(let j = 0;j<fdata.length;j+=4){
+        const fa = fdata[j + 3];
+        const a = data[baseStart + j + 3];
+        if(fa || a){
+          const fr = fdata[j];
+          const fg = fdata[j+1];
+          const fb = fdata[j+2];
 
+          const r = data[baseStart + j];
+          const g = data[baseStart + j + 1];
+          const b = data[baseStart + j + 2];
+
+          if(fa!==a || fr!==r || fg !== g || fb !== b){
+            const alphaT = fa/255;
+            const alphaB = a/255;
+            const alphaF = alphaT + alphaB*(1 - alphaT);
+            const tr = this.colorOverlay(fr,alphaT,r,alphaB,alphaF);
+            const tg = this.colorOverlay(fg,alphaT,g,alphaB,alphaF);
+            const tb = this.colorOverlay(fb,alphaT,b,alphaB,alphaF);
+            data[baseStart + j + 3] = alphaF * 255;
+            data[baseStart + j] = tr;
+            data[baseStart + j + 1] = tg;
+            data[baseStart + j + 2] = tb;
+          }
+        }
+      }
+    }
+    this.ctx.putImageData(imageData,x,y);
+  }
+  // colorT，alphaT：表示前景色和前景色的透明度
+  // colorB，alphaB：表示背景色和背景色的透明度
+  // colorF，alphaF：表示计算得到的颜色和透明度
+  colorOverlay(colorT:number,alphaT:number,colorB:number,alphaB:number,alphaF:number){
+    const colorF = (colorT*alphaT + colorB*alphaB*(1 - alphaT)) / alphaF;
+    return colorF;
   }
   clear(){
     this.store.length = 0;
-    this.doClean(0,0,this.width,this.height);
+    this.ctx.clearRect(0,0,this.width,this.height);
     this.pushImageData(0,0);
   }
-  doClean(x:number,y:number,width:number,height:number,determineIfThereHasContent = false){
-    x = this.scale * x;
-    y = this.scale * y;
-    width = this.scale * width;
-    height = this.scale * height;
+  doClean(x1:number,y1:number,x2:number,y2:number,r:number,determineIfThereHasContent = false){
+    x1 = this.scale * x1;
+    y1 = this.scale * y1;
+    x2 = this.scale * x2;
+    y2 = this.scale * y2;
+    r = this.scale * r;
     let hasContent = false;
+    let originData!:Uint8ClampedArray;
+    const clipX = Math.min(x1,x2) - r;
+    const clipY = Math.min(y1,y2) - r;
+    const clipWidth = Math.abs(x2 - x1) + 2 * r;
+    const clipHeight = Math.abs(y2 - y1) + 2 * r;
+
     if(determineIfThereHasContent){
-      const imageData = this.ctx.getImageData(x,y,width,height);
+      const imageData = this.ctx.getImageData(clipX,clipY,clipWidth,clipHeight);
+      originData = imageData.data;
+    }
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth = r * 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+    ctx.restore();
+
+    if(determineIfThereHasContent){
+      const imageData = this.ctx.getImageData(clipX,clipY,clipWidth,clipHeight);
       const data = imageData.data;
       const len = data.length;
       for(let i = 0;i<len;i+=4){
-        if(data[i+3]){
+        if(data[i+3] !== originData[i+3]){
           hasContent = true;
           break;
         }
       }
     }
-    this.ctx.clearRect(x,y,width,height);
     return hasContent;
   }
   pushImageData(worldOffsetX:number,worldOffsetY:number){
     const imageData = this.ctx.getImageData(0,0,this.width,this.height);
+    const data  = imageData.data;
+    const fragments:{data:Uint8ClampedArray,index:number,startCol:number,endCol:number}[] = [];
+    const total = data.length;
+    const colLen = this.width * 4;
+    let index = 0;
+    for(let i = 0;i<total;i+=colLen){
+      const subData = data.subarray(i,i + colLen);
+      let notOpacity = false;
+      let hasBegin = false;
+      let startCol = 0;
+      let endCol = 0;
+      for(let j = 0;j<colLen;j+=4){
+        if(subData[j+3]){
+          notOpacity = true;
+          if(!hasBegin){
+            hasBegin = true;
+            startCol = j;
+          }
+          endCol = j;
+        }
+      }
+      if(notOpacity){
+        fragments.push({data:subData,index,startCol,endCol});
+      }
+      index++;
+    }
     const store = this.store;
     const len = store.length;
     for(let i = len - 1;i>=0;i--){
@@ -77,7 +164,9 @@ export default class Writing{
     store.push({
       worldOffsetX,
       worldOffsetY,
-      imageData
+      imageData,
+      fragments,
+      colLen
     });
   }
   putImageData(worldOffsetX:number,worldOffsetY:number){
@@ -89,49 +178,46 @@ export default class Writing{
     const store = this.store;
     const storeLen = store.length;
     const displayData = new Uint8ClampedArray(total);
+    const subDatas:Uint8ClampedArray[] = [];
+    for(let i = 0;i<total;i+=colLen){
+      const subData = displayData.subarray(i,i + colLen);
+      subDatas.push(subData);
+    }
+    const subDatasLen = subDatas.length;
+
+
     for(let i = 0;i<storeLen;i++){
       const storeItem = store[i];
       const storeItemWorldOffsetX = storeItem.worldOffsetX;
       const storeItemWorldOffsetY = storeItem.worldOffsetY;
-      const storeItemData = storeItem.imageData.data;
-      if(Math.abs(storeItemWorldOffsetX - worldOffsetX)>=width || Math.abs(storeItemWorldOffsetY - worldOffsetY)>=height){
-        continue;
-      }
-      let currentCol = 0;
-      let currentRow = 0;
-      for(let j = 0;j<total;){
-        const displayCol = currentCol - worldOffsetX + storeItemWorldOffsetX;
-        const displayRow = currentRow - worldOffsetY + storeItemWorldOffsetY;
-        if(
-          displayCol >= 0
-          &&
-          displayRow >= 0
-          &&
-          displayCol < width
-          &&
-          displayRow < height
-        ){
-          const r = storeItemData[j];
-          const g = storeItemData[j+1];
-          const b = storeItemData[j+2];
-          const a = storeItemData[j+3];
-          const displayJ = (displayCol + displayRow * width) * 4;
-          displayData[displayJ] = r;
-          displayData[displayJ + 1] = g;
-          displayData[displayJ + 2] = b;
-          displayData[displayJ + 3] = a;
-        }
-        j += 4;
-        if(j%colLen){
-          currentCol++;
-        }else{
-          currentCol = 0;
-          currentRow += 1;
+      const storeItemFragments = storeItem.fragments;
+      const datasLen = storeItemFragments.length;
+
+      const beginX = (storeItemWorldOffsetX  - worldOffsetX ) * 4;
+      const benginY = storeItemWorldOffsetY  - worldOffsetY;
+      for(let j = 0;j<datasLen;j++){
+        const {data:rowData,index,startCol,endCol} = storeItemFragments[j];
+        const displayRow = benginY + index;
+        if(displayRow>=0 && displayRow<subDatasLen){
+          for(let k = startCol;k<=endCol;k+=4){
+            const displayCol = beginX + k;
+            if(displayCol>=0 && displayCol<colLen){
+              const a = rowData[k + 3];
+              if(a && !subDatas[displayRow][displayCol+3]){
+                subDatas[displayRow][displayCol] = rowData[k];
+                subDatas[displayRow][displayCol+1] = rowData[k+1];
+                subDatas[displayRow][displayCol+2] = rowData[k+2];
+                subDatas[displayRow][displayCol+3] = rowData[k+3];
+              }
+            }
+          }
         }
       }
     }
-    const displayImageData = new ImageData(displayData,width,height);
-    this.ctx.putImageData(displayImageData,0,0);
+    if(storeLen){
+      const displayImageData = new ImageData(displayData,width,height);
+      this.ctx.putImageData(displayImageData,0,0);
+    }
   }
   getWholeCanvas(){
     const width = this.width;

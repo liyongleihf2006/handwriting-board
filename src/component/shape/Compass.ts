@@ -39,14 +39,14 @@ export default class Compass{
     const endAngle = this.endAngle;
     const innerStartAngle = this.innerStartAngle;
     const innerEndAngle = this.innerEndAngle;
-    const r = this.r + voice;
-    const middleInsideR = this.middleR + voice;
+    const r = this.r + voice/2;
+    const middleInsideR = this.middleR + voice/2;
     const middleOutsideR = middleInsideR + this.middleGap - voice;
-    const smallR = this.smallR - voice;
+    const smallR = this.smallR - voice/2;
     const cx = _cx;
     const cy = _cy;
     const innerCx = _cx;
-    const innerCy = _cy - voice;
+    const innerCy = _cy;
     const path = new Path2D();
     path.arc(cx,cy,r,rotateAngle(startAngle,_angle),rotateAngle(endAngle,_angle));
     path.closePath();

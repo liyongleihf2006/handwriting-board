@@ -4,7 +4,7 @@ import Ruler from './shape/Ruler';
 import Compass from './shape/Compass';
 import Compass360 from './shape/Compass360';
 import Triangle from './shape/Triangle';
-import type { GetPageCoords } from '../type';
+import type { GetPageCoords,GatherAreas,GatherAreasObj } from '../type';
 export default class ToolShape {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
@@ -12,7 +12,6 @@ export default class ToolShape {
   outlineCtx!: OffscreenCanvasRenderingContext2D;
   outlineImageData!: ImageData;
   outline!: [number, number, Uint8ClampedArray][] | null;
-  outlineMap!: Record<number, Record<number, Uint8ClampedArray>>;
 
   longestDistance = 30;
 
@@ -32,7 +31,7 @@ export default class ToolShape {
   compass: Compass;
   compass360: Compass360;
   rightAngleTriangle: Triangle;
-  isoscelesTriangle: Triangle;
+  equilateralTriangle: Triangle;
   constructor(public w: number, public h: number, public voice: number, container: HTMLDivElement, getPageCoords: GetPageCoords) {
 
     this.canvas = generateCanvas(w, h);
@@ -45,7 +44,13 @@ export default class ToolShape {
     this.compass = new Compass(this.ctx, this.cm, this.mm);
     this.compass360 = new Compass360(this.ctx, this.cm, this.mm, container, getPageCoords, this);
     this.rightAngleTriangle = new Triangle(this.ctx, this.cm, this.mm, 9, 5, this.cm * 3, this.cm * 1);
-    this.isoscelesTriangle = new Triangle(this.ctx, this.cm, this.mm, 6, 6, this.cm * 2, this.cm * 2);
+    this.equilateralTriangle = new Triangle(this.ctx, this.cm, this.mm, 6, 6, this.cm * 2, this.cm * 2);
+  }
+  resize(width:number,height:number){
+    this.width = width;
+    this.height = height;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
   }
   set toolShapeCenterX(x: number) {
     this.shape.toolShapeCenterX = x;
@@ -71,6 +76,7 @@ export default class ToolShape {
   set toolShapeType(toolShapeType: ShapeType) {
     this._toolShapeType = toolShapeType;
     this.reset();
+    this.draw();
   }
   get toolShapeType() {
     return this._toolShapeType;
@@ -82,7 +88,7 @@ export default class ToolShape {
       case ShapeType.COMPASS: shape = this.compass; break;
       case ShapeType.COMPASS360: shape = this.compass360; break;
       case ShapeType.RIGHT_ANGLE_TRIANGLE: shape = this.rightAngleTriangle; break;
-      case ShapeType.SOSCELESL_TRIANGLE: shape = this.isoscelesTriangle; break;
+      case ShapeType.EQUILATERAL_TRIANGLE: shape = this.equilateralTriangle; break;
       default: shape = this.ruler;
     }
     return shape;
@@ -90,21 +96,34 @@ export default class ToolShape {
   reset() {
     this.outline = null;
     this.prevPoint = null;
-    this.draw();
   }
-  getGathers(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number) {
+  getGatherAreas(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number) {
+    const imageData = this.outlineImageData;
+    const data = imageData.data;
+    const width = this.w;
+    const rowLen = width * 4;
+    const gatherAreas: GatherAreas= [];
+
     const topLeftX = Math.min(x1, x2) - gatherAreaWidth / 2;
     const topLeftY = Math.min(y1, y2) - gatherAreaWidth / 2;
     const bottomRightX = Math.max(x1, x2) + gatherAreaWidth / 2;
     const bottomRightY = Math.max(y1, y2) + gatherAreaWidth / 2;
 
-    const gathers: [number, number][] = [];
-    for (let x = topLeftX; x <= bottomRightX; x++) {
-      for (let y = topLeftY; y <= bottomRightY; y++) {
-        gathers.push([x, y]);
-      }
+    const startX = topLeftX * 4;
+    const startY = topLeftY;
+    const endX = (bottomRightX + 1) * 4;
+    const endY = bottomRightY + 1;
+    const fragmentLen = endX - startX;
+    let k = 0;
+    for(let j = startY;j<endY;j++){
+      const base = j * rowLen;
+      const start = base + startX;
+      const end = base + endX;
+      const fragment = data.subarray(start,end);
+      gatherAreas.push({start:fragmentLen * k,end:fragmentLen * (k+1),data:fragment});
+      k++;
     }
-    return gathers;
+    return {x:topLeftX,y:topLeftY,width:bottomRightX - topLeftX + 1,height:bottomRightY - topLeftY + 1,fragments:gatherAreas};
   }
   getNearestDistanceAndPoint(x: number, y: number, getNearestDistanceAndPointVoice: number, strokeStyle: string) {
     if (!this.outline || getNearestDistanceAndPointVoice !== this.getNearestDistanceAndPointVoice || this.strokeStyle !== strokeStyle) {
@@ -113,12 +132,11 @@ export default class ToolShape {
       this.outlineCtx = this.getOutlineCtx(this.getNearestDistanceAndPointVoice, strokeStyle);
       this.outlineImageData = this.outlineCtx.getImageData(0, 0, this.w, this.h);
       this.outline = this.getOutline(this.outlineImageData);
-      this.outlineMap = this.getOutlineMap(this.outline);
     }
     const outline = this.outline;
     const len = outline.length;
     let prevPoint = this.prevPoint!;
-    const gatherAreaWidth = this.gatherAreaWidth;
+    const gatherAreaWidth = Math.max(this.gatherAreaWidth,getNearestDistanceAndPointVoice * 3);
     if (!prevPoint) {
       let nearestDistance = Number.MAX_SAFE_INTEGER;
       for (let i = 0; i < len; i++) {
@@ -152,22 +170,12 @@ export default class ToolShape {
           gatherPoint = [x0, y0];
         }
       }
-      let gathers: [number, number][] = [];
-      if (gatherPoint) {
-        gathers = this.getGathers(prevPoint[0], prevPoint[1], gatherPoint[0], gatherPoint[1], gatherAreaWidth);
-      }
-      const drawPoints = [];
-      const gathersLen = gathers.length;
-      for (let i = 0; i < gathersLen; i++) {
-        const p = gathers[i];
-        const imageData = this.outlineMap?.[p[0]]?.[p[1]];
-        if (imageData) {
-          const data = imageData;
-          drawPoints.push({ x: p[0], y: p[1], fillStyle: `rgba(${data[0]},${data[1]},${data[2]},${data[3] / 255})` });
-        }
+      let gatherAreasObj:GatherAreasObj= {x:0,y:0,width:0,height:0,fragments:[]};
+      if(gatherPoint){
+        gatherAreasObj = this.getGatherAreas(prevPoint[0], prevPoint[1], gatherPoint[0], gatherPoint[1], gatherAreaWidth);
       }
       this.prevPoint = gatherPoint;
-      return { conformingToDistance: true, drawPoints };
+      return { conformingToDistance: true,gatherAreasObj};
     }
   }
   getOutlineCtx(outlineVoice: number, strokeStyle: string) {
@@ -191,24 +199,12 @@ export default class ToolShape {
     }
     return outline;
   }
-  getOutlineMap(outline: [number, number, Uint8ClampedArray][]) {
-    const map: Record<number, Record<number, Uint8ClampedArray>> = {};
-    const len = outline.length;
-    for (let i = 0; i < len; i++) {
-      const [x, y, uints] = outline[i];
-      if (!map[x]) {
-        map[x] = {};
-      }
-      map[x][y] = uints;
-    }
-    return map;
-  }
   isPointInPath(x: number, y: number, fillRule: CanvasFillRule) {
     return this.shape.isPointInPath(x, y, fillRule);
   }
-  draw() {
+  draw(showDu=false,duCx=0,duCy=0) {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.w, this.h);
-    this.shape.draw();
+    this.shape.draw(showDu,duCx,duCy);
   }
 }

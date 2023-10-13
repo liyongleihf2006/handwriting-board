@@ -30,6 +30,12 @@ export default class Background{
     this.gridPaperPattern = this.generateGridPaperPattern();
     this.quadrillePaperPattern = this.generateQuadrillePaperPattern();
   }
+  resize(width:number,height:number){
+    this.width = width;
+    this.height = height;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+  }
   draw(coordX:number,coordY:number,bgPattern:BGPattern){
     if(coordX!==this.coordX || coordY!==this.coordY || bgPattern!==this.bgPattern){
       this.coordX = coordX;

@@ -1,4 +1,4 @@
-import type { Options, Store, ContainerOffset, Coords, OnChange, ScrollRange, Points } from './type';
+import type { Options, PreStore,Store, ContainerOffset, Coords, OnChange, ScrollRange,GatherAreasObj } from './type';
 import { Stack } from './stack';
 import { WriteModel, BGPattern, ScrollDirection, ShapeType } from './enum';
 import { debounce, getTripleTouchAngleAndCenter, rotateCoordinate, negativeRemainder } from './utils';
@@ -88,19 +88,15 @@ const defaultVoice = 1;
 /**
  * 墨水颜色
  */
-const defaultColor = 'rgb(0,0,0)';
+const defaultColor = 'rgba(0,0,0,1)';
 /**
  * 是否启用操作历史
  */
-const defaultStack = true;
+const defaultStack = false;
 /**
- * 橡皮擦除的宽度
+ * 橡皮擦除的半径
  */
-const defaultCleanWidth = 20;
-/**
- * 橡皮擦除的高度
- */
-const defaultCleanHeight = 20;
+const defaultCleanR = 20;
 /**
  * 滚动的时候执行的次数
  */
@@ -124,12 +120,15 @@ const defaultBorderStyle = '#333';
 /**
  * 边框的宽度
  */
-const defaultBorderWidth = 2;
+const defaultBorderWidth = 0;
 /**
  * 是否使用尺子等工具
  */
 const defaultUseShapeType = false;
-
+/**
+ * hash 组件的hash
+ */
+const defaultHash = '';
 const defaultOptions = {
   scrollRange: defaultScrollRange,
   scrollDirection: defaultScrollDirection,
@@ -150,21 +149,21 @@ const defaultOptions = {
   voice: defaultVoice,
   color: defaultColor,
   stack: defaultStack,
-  cleanWidth: defaultCleanWidth,
-  cleanHeight: defaultCleanHeight,
+  cleanR: defaultCleanR,
   moveCountTotal: defaultMoveCountTotal,
   writeLocked: defaultWriteLocked,
   dragLocked: defaultDragLocked,
   showBorder: defaultShowBorder,
   borderStyle: defaultBorderStyle,
   borderWidth: defaultBorderWidth,
-  useShapeType: defaultUseShapeType
+  useShapeType: defaultUseShapeType,
+  hash: defaultHash
 };
 export default class Board {
   private width: number;
   private height: number;
-  private worldOffsetX = 0;
-  private worldOffsetY = 0;
+  worldOffsetX = 0;
+  worldOffsetY = 0;
   private scrolling = false;
   
   private cleanState = false;
@@ -203,8 +202,7 @@ export default class Board {
   ruleStrokeStyle: string;
   voice: number;
   color: string;
-  cleanWidth: number;
-  cleanHeight: number;
+  cleanR: number;
   stack: boolean;
   moveCountTotal: number;
   writeLocked: boolean;
@@ -215,7 +213,9 @@ export default class Board {
   useShapeType: boolean;
   containerOffset: ContainerOffset;
   onChange: OnChange | undefined;
-
+  store:Store = {};
+  hash:number|string;
+  justifyDus = [0,45,90,135,180,225,270,315,360];
   constructor(public container: HTMLDivElement, options: Options = defaultOptions) {
     this.scrollRange = options.scrollRange ?? defaultScrollRange;
     this.scrollDirection = options.scrollDirection ?? defaultScrollDirection;
@@ -236,8 +236,7 @@ export default class Board {
     this.voice = options.voice ?? defaultVoice;
     this.color = options.color ?? defaultColor;
     this.stack = options.stack ?? defaultStack;
-    this.cleanWidth = options.cleanWidth ?? defaultCleanWidth;
-    this.cleanHeight = options.cleanHeight ?? defaultCleanHeight;
+    this.cleanR = options.cleanR ?? defaultCleanR;
     this.moveCountTotal = options.moveCountTotal ?? defaultMoveCountTotal;
     this.writeLocked = options.writeLocked ?? defaultWriteLocked;
     this.dragLocked = options.dragLocked ?? defaultDragLocked;
@@ -245,6 +244,7 @@ export default class Board {
     this.borderStyle = options.borderStyle ?? defaultBorderStyle;
     this.borderWidth = options.borderWidth ?? defaultBorderWidth;
     this.useShapeType = options.useShapeType ?? defaultUseShapeType;
+    this.hash = options.hash ?? defaultHash;
     this.containerOffset = options.containerOffset ?? (() => {
       const scrollingElement = document.scrollingElement as HTMLElement;
       const rect = this.container.getBoundingClientRect();
@@ -255,14 +255,16 @@ export default class Board {
     });
     this.onChange = options.onChange;
     this.debounceBindOnChange = debounce(this.triggerOnChange, 500);
-    const rect = container.getBoundingClientRect();
-    this.width = rect.width;
-    this.height = rect.height;
+    this.loadEvent();
     if (this.stack) {
-      this.stackObj = new Stack(this.width, this.height);
-      this.stackObj.restoreState = (store: Store) => {
-        const storeLen = store.length;
-        const lastStoreItem = store[storeLen - 1];
+      const container = this.container;
+      const rect = container.getBoundingClientRect();
+      const width = Math.floor(rect.width);
+      const height = Math.floor(rect.height);
+      this.stackObj = new Stack(width, height, this.hash);
+      this.stackObj.restoreState = (preStore: PreStore) => {
+        const storeLen = preStore.length;
+        const lastStoreItem = preStore[storeLen - 1];
         const prevWorldOffsetX = this.worldOffsetX;
         const prevWorldOffsetY = this.worldOffsetY;
         const targetWorldOffsetX = lastStoreItem.worldOffsetX;
@@ -270,35 +272,94 @@ export default class Board {
         const offsetX = targetWorldOffsetX - prevWorldOffsetX;
         const offsetY = targetWorldOffsetY - prevWorldOffsetY;
         if (!offsetX && !offsetY) {
-          this.worldOffsetX = lastStoreItem.worldOffsetX;
+this.worldOffsetX = lastStoreItem.worldOffsetX;
           this.worldOffsetY = lastStoreItem.worldOffsetY;
-          this.writing.store = store;
+          this.preStore = preStore;
+          this.writing.store = preStore;
           this.draw();
         } else {
           const preOffsetX = offsetX / this.moveCountTotal;
           const preOffsetY = offsetY / this.moveCountTotal;
-          this.writing.store = store;
+          this.writing.store = preStore;
           this.moveT = true;
           this.doMove(preOffsetX, preOffsetY);
         }
       };
     }
-
-    this.background = new Background(this.width, this.height, this.gridGap, this.gridFillStyle, this.gridPaperGap, this.gridPaperStrokeStyle, this.quadrillePaperVerticalMargin, this.quadrillePaperGap, this.quadrillePaperStrokeStyles);
-    this.container.append(this.background.canvas);
-    this.ruleAuxiliary = new RuleAuxiliary(this.width, this.height, this.ruleStrokeStyle, this.ruleGap, this.ruleUnitLen);
-    this.container.append(this.ruleAuxiliary.canvas);
-    this.border = new Border(this.width, this.height, this.borderStyle, this.borderWidth);
-    this.container.append(this.border.canvas);
-    this.writing = new Writing(this.width, this.height);
-    this.container.append(this.writing.canvas);
-    this.toolShape = new ToolShape(this.width, this.height, this.voice, container, this.getPageCoords);
-    this.container.append(this.toolShape.canvas);
-    this.eraser = new Eraser(this.width, this.height);
-    this.container.append(this.eraser.canvas);
+    this.resize();
+  }
+  set preStore(preStore){
+    const store = this.store;
+    const hash = this.hash;
+    if(!store[hash]){
+      store[hash] = [];
+    }
+    store[hash] = preStore;
+  }
+  get preStore(){
+    const store = this.store;
+    const hash = this.hash;
+    if(!store[hash]){
+      store[hash] = [];
+    }
+    return store[hash];
+  }
+  updateWorldOffset(deltaX:number,deltaY:number){
+    this.worldOffsetX += deltaX;
+    this.worldOffsetY += deltaY;
+  }
+  updateHash(hash:number|string){
+    this.hash = hash;
+    this.stack && this.stackObj.updateHash(hash);
+    this.writing.store = this.preStore;
+    this.writing.refresh(this.worldOffsetX,this.worldOffsetY);
+  }
+  resize(){
+    const container = this.container;
+    const rect = container.getBoundingClientRect();
+    this.width = Math.floor(rect.width);
+    this.height = Math.floor(rect.height);
+    if(this.enableBG){
+      if(!this.background){
+        this.background = new Background(this.width, this.height, this.gridGap, this.gridFillStyle, this.gridPaperGap, this.gridPaperStrokeStyle, this.quadrillePaperVerticalMargin, this.quadrillePaperGap, this.quadrillePaperStrokeStyles);
+        this.container.append(this.background.canvas);
+      }else{
+        this.background.resize(this.width, this.height);
+      }
+    }
+    if(this.rule){
+      if(!this.ruleAuxiliary){
+        this.ruleAuxiliary = new RuleAuxiliary(this.width, this.height, this.ruleStrokeStyle, this.ruleGap, this.ruleUnitLen);
+        this.container.append(this.ruleAuxiliary.canvas);
+      }else{
+        this.ruleAuxiliary.resize(this.width, this.height);
+      }
+    }
+    if(!this.writing){
+      this.writing = new Writing(this.width, this.height,this.preStore);
+      this.container.append(this.writing.canvas);
+    }else{
+      this.writing.resize(this.width, this.height);
+    }
+    if(this.useShapeType){
+      if(!this.toolShape){
+        this.toolShape = new ToolShape(this.width, this.height, this.voice, container, this.getPageCoords);
+        this.container.append(this.toolShape.canvas);
+      }else{
+        this.toolShape.resize(this.width, this.height);
+      }
+    }
+    if(!this.eraser){
+      this.eraser = new Eraser(this.width, this.height);
+      this.container.append(this.eraser.canvas);
+    }else{
+      this.eraser.resize(this.width, this.height);
+    }
     this.brushDrawing = new BrushDrawing(this.width,this.height,this.voice,this.writing);
-    this.container.append(this.brushDrawing.canvas);
-    this.loadEvent();
+    if(this.stack){
+      this.stackObj.width = this.width;
+      this.stackObj.height = this.height;
+    }
     this.draw();
   }
   setVoice(voice = 1) {
@@ -383,7 +444,7 @@ export default class Board {
     this.worldOffsetY = 0;
     this.writing.clear();
     this.draw();
-    this.stackObj.saveState([...this.writing.store]);
+    this.stack && this.stackObj.saveState([...this.writing.store]);
   }
   triggerOnChange() {
     window.requestIdleCallback(() => {
@@ -409,10 +470,10 @@ export default class Board {
     return canvas;
   }
   undo() {
-    this.stackObj.undo();
+    this.stack && this.stackObj.undo();
   }
   redo() {
-    this.stackObj.redo();
+    this.stack && this.stackObj.redo();
   }
   clean() {
     this.cleanState = true;
@@ -420,12 +481,18 @@ export default class Board {
   unclean() {
     this.cleanState = false;
   }
-  draw() {
-    this.loadBackground();
-    this.loadRule();
+  draw(showDu=false,duCx=0,duCy=0) {
+    if (this.enableBG) {
+      this.loadBackground();
+    }
+    if(this.rule){
+      this.loadRule();
+    }
     this.writing.refresh(this.worldOffsetX, this.worldOffsetY);
     this.drawEraser();
-    this.drawToolShape();
+    if(this.useShapeType){
+      this.drawToolShape(showDu,duCx,duCy);
+    }
     this.debounceBindOnChange();
   }
   private doPushPoints(x:number,y:number,event:PointerEvent){
@@ -439,6 +506,7 @@ export default class Board {
     let hasWrited = false;
     let isDoubleTouch = false;
     let isToolShapeDoubleTouch = false;
+    let isToolShapeSingleTouch = false;
     let rotationCenter!: { x: number, y: number };
     let turnStartAngle = 0;
 
@@ -469,8 +537,8 @@ export default class Board {
       } else {
         if (!this.cleanState && this.useShapeType && this.toolShape.isPointInPath(coords.pageX, coords.pageY, 'evenodd')) {
           isSingleTouch = false;
-        }else if(!this.cleanState && !this.useShapeType){
-          this.doPushPoints(x,y,event);
+        }else if(!this.cleanState){
+          this.brushDrawing.setPrev(x,y,event.pressure)
         }
         this.activateToolShape = false;
       }
@@ -486,34 +554,43 @@ export default class Board {
       this.scrolling = false;
       const touches = event.touches;
       const coords = this.getPageCoords(touches);
+      let isPointInPath = false;
+      
+      dragEndX = coords.pageX;
+      dragEndY = coords.pageY;
       if (touches.length === 2) {
         isDoubleTouch = true;
         isSingleTouch = false;
         if (this.dragLocked) { return; }
-
-        dragEndX = coords.pageX;
-        dragEndY = coords.pageY;
         dragEndTime = performance.now();
         if (this.cleanState) {
           this.cleanPress = false;
           this.draw();
         }
-        let isPointInPath = false;
         if (this.useShapeType && this.toolShape.isPointInPath(coords.pageX, coords.pageY, 'nonzero')) {
           isPointInPath = true;
         }
         if (isPointInPath) {
           isToolShapeDoubleTouch = true;
+          isToolShapeSingleTouch = false;
           rotationCenter = { x: coords.pageX, y: coords.pageY };
           turnStartAngle = Math.atan2(touches[1].pageY - touches[0].pageY,touches[1].pageX - touches[0].pageX) / Math.PI * 180;
           if(turnStartAngle<0){
             turnStartAngle += 360;
           }
-        
         } else {
           isToolShapeDoubleTouch = false;
         }
       } else if (touches.length === 1 && !this.writeLocked) {
+        if (this.useShapeType && this.toolShape.isPointInPath(coords.pageX, coords.pageY,'evenodd')) {
+          isPointInPath = true;
+        }
+        if (isPointInPath) {
+          isToolShapeDoubleTouch = false;
+          isToolShapeSingleTouch = true;
+        } else {
+          isToolShapeSingleTouch = false;
+        }
         isSingleTouch = true;
       }else{
         isSingleTouch = false;
@@ -532,8 +609,8 @@ export default class Board {
         });
       }
     };
-    const doInsertPointByToolShape = (nearestPoints: { x: number, y: number, fillStyle: string }[]) => {
-      this.writing.singlePointsWriting(nearestPoints);
+    const doInsertPointByToolShape = (gatherAreasObj:GatherAreasObj) => {
+      this.writing.singlePointsWriting(gatherAreasObj);
     };
     const handleWriteMove = (coords: Coords,event: PointerEvent) => {
       const x = coords.pageX;
@@ -541,15 +618,15 @@ export default class Board {
       hasMoved = true;
       hasWrited = true;
       if (this.cleanState) {
+        this.doClean(this.cleanX!,this.cleanY!,x, y);
         this.cleanX = x;
         this.cleanY = y;
-        this.doClean(x, y);
         this.drawEraser();
       } else {
         if (this.useShapeType && this.activateToolShape) {
           const lineWidth = this.voice;
-          const { drawPoints } = this.toolShape.getNearestDistanceAndPoint(coords.pageX, coords.pageY, lineWidth, this.color);
-          doInsertPointByToolShape(drawPoints);
+          const { gatherAreasObj } = this.toolShape.getNearestDistanceAndPoint(coords.pageX, coords.pageY, lineWidth, this.color);
+          doInsertPointByToolShape(gatherAreasObj!);
         } else {
           this.doPushPoints(x,y,event);
         }
@@ -558,9 +635,11 @@ export default class Board {
     const handlePointermove = (event: PointerEvent) => {
       setTimeout(() => {
         if (isSingleTouch) {
-          const { pageX, pageY } = event;
-          const coords = this.getPageCoords([{ pageX, pageY }]);
-          handleWriteMove(coords,event);
+          if(!this.useShapeType || !isToolShapeSingleTouch){
+            const { pageX, pageY } = event;
+            const coords = this.getPageCoords([{ pageX, pageY }]);
+            handleWriteMove(coords,event);
+          }
         }
       });
     };
@@ -576,11 +655,6 @@ export default class Board {
         dragEndY = coords.pageY;
         dragEndTime = performance.now();
         if (this.useShapeType && isToolShapeDoubleTouch) {
-          const deltaX = dragEndX - dragStartX;
-          const deltaY = dragEndY - dragStartY;
-
-          this.toolShape.toolShapeCenterX += deltaX;
-          this.toolShape.toolShapeCenterY += deltaY;
           if (event.touches.length === 2) {
             let { angle } = getTripleTouchAngleAndCenter(event);
             if(angle<0){
@@ -592,7 +666,7 @@ export default class Board {
             this.toolShape.toolShapeCenterX = newX;
             this.toolShape.toolShapeCenterY = newY;
             this.toolShape.angle += deltaAngle;
-            this.draw();
+            this.draw(true,rotationCenter.x,rotationCenter.y)
           }
         } else {
           let deltaX = 0;
@@ -610,6 +684,18 @@ export default class Board {
           this.adjustOffset();
           this.draw();
         }
+      }else if(this.useShapeType && isToolShapeSingleTouch){
+        dragStartX = dragEndX;
+        dragStartY = dragEndY;
+        const coords = this.getPageCoords(touches);
+        dragEndX = coords.pageX;
+        dragEndY = coords.pageY;
+        const deltaX = dragEndX - dragStartX;
+        const deltaY = dragEndY - dragStartY;
+
+        this.toolShape.toolShapeCenterX += deltaX;
+        this.toolShape.toolShapeCenterY += deltaY;
+        this.draw();
       }
     };
     const scrollDecay = (speedX: number, speedY: number) => {
@@ -652,11 +738,38 @@ export default class Board {
         } else if (this.scrollDirection === ScrollDirection.Y) {
           speedY = deltaY / deltaTime;
         }
-        if (!isToolShapeDoubleTouch) {
-          scrollDecay(speedX, speedY);
+        // if (!isToolShapeDoubleTouch && !isToolShapeSingleTouch) {
+        //   scrollDecay(speedX, speedY);
+        // }
+      }
+      if(this.useShapeType && isToolShapeDoubleTouch){
+        let angle = this.toolShape.angle;
+        angle = (Math.floor(angle)%360 + 360)%360;
+        let needJustify = false;
+        for(let i = 0;i<this.justifyDus.length;i++){
+          const justifyDu = this.justifyDus[i];
+          if(Math.abs(justifyDu - angle)<15){
+            turnStartAngle = justifyDu;
+            needJustify = true;
+            break;
+          }
+        }
+        if(needJustify){
+          let deltaAngle = turnStartAngle - angle;
+          const [newX, newY] = rotateCoordinate(rotationCenter.x, rotationCenter.y, deltaAngle, this.toolShape.toolShapeCenterX, this.toolShape.toolShapeCenterY);
+          this.toolShape.toolShapeCenterX = newX;
+          this.toolShape.toolShapeCenterY = newY;
+          this.toolShape.angle += deltaAngle;
+          this.draw(true,rotationCenter.x,rotationCenter.y)
+          setTimeout(() => {
+            this.draw();
+          },500);
+        }else{
+          setTimeout(() => {
+            this.draw();
+          },500);
         }
       }
-      
     };
     const handleTouchEnd = (event: TouchEvent) => {
       const touches = event.changedTouches;
@@ -681,7 +794,9 @@ export default class Board {
       }
       isDoubleTouch = false;
       isSingleTouch = false;
-      this.toolShape.prevPoint = null;
+      if(this.useShapeType){
+        this.toolShape.prevPoint = null;
+      }
     };
     const container = this.container;
     if (isTouchDevice()) {
@@ -710,12 +825,12 @@ export default class Board {
   };
   private drawEraser() {
     if (this.cleanState && this.cleanPress) {
-      this.eraser.draw(this.cleanX as number, this.cleanY as number, this.cleanWidth as number, this.cleanHeight as number);
+      this.eraser.draw(this.cleanX as number, this.cleanY as number, this.cleanR as number);
     }
     this.eraser.canvas.style.opacity = (this.cleanState && this.cleanPress) ? '1' : '0';
   }
-  private doClean(writeEndX: number, writeEndY: number) {
-    const hasContent = this.writing.doClean(writeEndX - this.cleanWidth / 2, writeEndY - this.cleanHeight / 2, this.cleanWidth, this.cleanHeight, true);
+  private doClean(x1:number,y1:number,x2: number, y2: number) {
+    const hasContent = this.writing.doClean(x1, y1, x2, y2,this.cleanR,true);
     if (hasContent) {
       this.eraserHasContent = true;
     }
@@ -749,10 +864,10 @@ export default class Board {
     }
     this.ruleAuxiliary.canvas.style.opacity = this.rule ? '1' : '0';
   }
-  private drawToolShape() {
+  private drawToolShape(showDu=false,duCx=0,duCy=0) {
     this.toolShape.canvas.style.opacity = this.useShapeType ? '1' : '0';
     if(this.useShapeType){
-      this.toolShape.draw();
+      this.toolShape.draw(showDu,duCx,duCy);
     }
   }
 }

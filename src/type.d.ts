@@ -22,8 +22,7 @@ export type Options = {
   voice?: number,
   color?: string,
   stack?: boolean,
-  cleanWidth?: number,
-  cleanHeight?: number,
+  cleanR?: number,
   moveCountTotal?: number,
   writeLocked?: boolean,
   dragLocked?: boolean,
@@ -31,6 +30,7 @@ export type Options = {
   borderStyle?: string;
   borderWidth?: number;
   useShapeType?: boolean;
+  hash?:number|string;
   containerOffset?: ContainerOffset
   onChange?: OnChange;
 }
@@ -39,8 +39,13 @@ export type Coords = { pageX: number, pageY: number };
 export type StoreItem = {
   worldOffsetX: number,
   worldOffsetY: number,
-  imageData: ImageData
+  imageData: ImageData,
+  fragments: {data:Uint8ClampedArray,index:number,startCol:number,endCol:number}[],
+  colLen: number
 }
-export type Store = StoreItem[];
+export type PreStore = StoreItem[];
+export type Store = Record<number|string,PreStore>;
 export type Points = [[number, number], [number, number], [number, number], [number, number],[number,number],[number,number],[number,number]];
 export type GetPageCoords = (touches: TouchList | Coords[]) => { pageX: number, pageY: number }
+export type GatherAreas = {start:number,end:number,data:Uint8ClampedArray}[];
+export type GatherAreasObj = {x:number,y:number,width:number,height:number,fragments:GatherAreas}

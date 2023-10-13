@@ -9,7 +9,7 @@ export default class Triangle{
 
   toolShapeCenterX = 500;
   toolShapeCenterY = 300;
-  angle = 10;
+  angle = 0;
 
   constructor(public ctx:CanvasRenderingContext2D,public cm:number,public mm:number,public degreeNumberH:number,public degreeNumberV:number,public marginH:number,public marginV:number){
     this.marginC = this.cm;
@@ -30,28 +30,28 @@ export default class Triangle{
     return c;
   }
   generatorOuterBorder(_cx:number,_cy:number,_angle:number,voice = 0){
-    const width = this.width + voice;
-    const height = this.height + voice;
-    const x = _cx - voice/2 - width/2;
-    const y = _cy - voice/2 - height/2;
+    const width = this.width;
+    const height = this.height;
+    const x = _cx - width/2 - voice/2;
+    const y = _cy - height/2 - voice/2;
     const angle = _angle;
 
 
     const rotateCoordinates = RotateCoordinates(angle,_cx,_cy);
     const path = new Path2D();
-    path.moveTo(...rotateCoordinates(x+width,y));
+    path.moveTo(...rotateCoordinates(x+width + voice + voice * width/(width + height),y));
     path.lineTo(...rotateCoordinates(x,y));
-    path.lineTo(...rotateCoordinates(x,y+height));
+    path.lineTo(...rotateCoordinates(x,y+height + voice + voice * height/(width + height)));
     path.closePath();
 
     const gap = this.gap;
-    const smallX = x + gap;
-    const smallY = y + gap;
+    const smallX = x + gap + voice;
+    const smallY = y + gap + voice;
     const smallWidth = width / 2;
     const smallHeight = height / 2;
-    path.moveTo(...rotateCoordinates(smallX+smallWidth,smallY));
+    path.moveTo(...rotateCoordinates(smallX+smallWidth - voice - voice * width/(width + height) ,smallY));
     path.lineTo(...rotateCoordinates(smallX,smallY ));
-    path.lineTo(...rotateCoordinates(smallX,smallY+smallHeight));
+    path.lineTo(...rotateCoordinates(smallX,smallY+smallHeight - voice - voice * width/(width + height)));
     path.closePath();
 
     this.path = path;

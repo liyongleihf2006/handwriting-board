@@ -18,6 +18,12 @@ export default class RuleAuxiliary{
     this.canvas = generateCanvas(width,height);
     this.ctx = this.canvas.getContext('2d')!;
   }
+  resize(width:number,height:number){
+    this.width = width;
+    this.height = height;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+  }
   draw(worldOffsetX:number,worldOffsetY:number){
     if(worldOffsetX!==this.worldOffsetX || worldOffsetY!==this.worldOffsetY){
       this.worldOffsetX = worldOffsetX;
