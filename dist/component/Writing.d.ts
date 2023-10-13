@@ -1,20 +1,18 @@
-import type { Store } from '../type';
+import type { PreStore, GatherAreasObj } from '../type';
 export default class Writing {
-    store: Store;
+    store: PreStore;
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     scale: number;
     width: number;
     height: number;
-    constructor(width: number, height: number);
+    constructor(width: number, height: number, store: PreStore);
+    resize(width: number, height: number): void;
     refresh(worldOffsetX: number, worldOffsetY: number): void;
-    singlePointsWriting(points: {
-        x: number;
-        y: number;
-        fillStyle: string;
-    }[]): void;
+    singlePointsWriting(gatherAreasObj: GatherAreasObj): void;
+    colorOverlay(colorT: number, alphaT: number, colorB: number, alphaB: number, alphaF: number): number;
     clear(): void;
-    doClean(x: number, y: number, width: number, height: number, determineIfThereHasContent?: boolean): boolean;
+    doClean(x1: number, y1: number, x2: number, y2: number, r: number, determineIfThereHasContent?: boolean): boolean;
     pushImageData(worldOffsetX: number, worldOffsetY: number): void;
     putImageData(worldOffsetX: number, worldOffsetY: number): void;
     getWholeCanvas(): HTMLCanvasElement;

@@ -17,5 +17,5 @@ export declare enum ShapeType {
     COMPASS = "compass",
     COMPASS360 = "compass360",
     RIGHT_ANGLE_TRIANGLE = "rightAngleTriangle",
-    SOSCELESL_TRIANGLE = "isoscelesTriangle"
+    EQUILATERAL_TRIANGLE = "equilateralTriangle"
 }

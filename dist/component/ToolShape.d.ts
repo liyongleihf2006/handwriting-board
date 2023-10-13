@@ -3,7 +3,7 @@ import Ruler from './shape/Ruler';
 import Compass from './shape/Compass';
 import Compass360 from './shape/Compass360';
 import Triangle from './shape/Triangle';
-import type { GetPageCoords } from '../type';
+import type { GetPageCoords, GatherAreas, GatherAreasObj } from '../type';
 export default class ToolShape {
     w: number;
     h: number;
@@ -14,7 +14,6 @@ export default class ToolShape {
     outlineCtx: OffscreenCanvasRenderingContext2D;
     outlineImageData: ImageData;
     outline: [number, number, Uint8ClampedArray][] | null;
-    outlineMap: Record<number, Record<number, Uint8ClampedArray>>;
     longestDistance: number;
     gatherAreaWidth: number;
     prevPoint: [number, number] | null;
@@ -30,8 +29,9 @@ export default class ToolShape {
     compass: Compass;
     compass360: Compass360;
     rightAngleTriangle: Triangle;
-    isoscelesTriangle: Triangle;
+    equilateralTriangle: Triangle;
     constructor(w: number, h: number, voice: number, container: HTMLDivElement, getPageCoords: GetPageCoords);
+    resize(width: number, height: number): void;
     set toolShapeCenterX(x: number);
     get toolShapeCenterX(): number;
     set toolShapeCenterY(y: number);
@@ -42,18 +42,24 @@ export default class ToolShape {
     get toolShapeType(): ShapeType;
     get shape(): Ruler | Compass | Compass360 | Triangle;
     reset(): void;
-    getGathers(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number): [number, number][];
+    getGatherAreas(x1: number, y1: number, x2: number, y2: number, gatherAreaWidth: number): {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        fragments: GatherAreas;
+    };
     getNearestDistanceAndPoint(x: number, y: number, getNearestDistanceAndPointVoice: number, strokeStyle: string): {
         conformingToDistance: boolean;
-        drawPoints: {
-            x: number;
-            y: number;
-            fillStyle: string;
-        }[];
+        drawPoints: never[];
+        gatherAreasObj?: undefined;
+    } | {
+        conformingToDistance: boolean;
+        gatherAreasObj: GatherAreasObj;
+        drawPoints?: undefined;
     };
     getOutlineCtx(outlineVoice: number, strokeStyle: string): OffscreenCanvasRenderingContext2D;
     getOutline(imageData: ImageData): [number, number, Uint8ClampedArray][];
-    getOutlineMap(outline: [number, number, Uint8ClampedArray][]): Record<number, Record<number, Uint8ClampedArray>>;
     isPointInPath(x: number, y: number, fillRule: CanvasFillRule): boolean;
-    draw(): void;
+    draw(showDu?: boolean, duCx?: number, duCy?: number): void;
 }

@@ -18,6 +18,7 @@ export default class Background {
     coordX: number;
     coordY: number;
     constructor(width: number, height: number, gridGap: number, gridFillStyle: string, gridPaperGap: number, gridPaperStrokeStyle: string, quadrillePaperVerticalMargin: number, quadrillePaperGap: number, quadrillePaperStrokeStyles: string[]);
+    resize(width: number, height: number): void;
     draw(coordX: number, coordY: number, bgPattern: BGPattern): void;
     private generateGridPattern;
     private generateGridPaperPattern;

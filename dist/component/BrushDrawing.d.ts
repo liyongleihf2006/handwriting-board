@@ -2,8 +2,6 @@ import { WriteModel } from '../enum';
 import Writing from './Writing';
 export default class Eraser {
     writing: Writing;
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
     writeModel: WriteModel;
     width: number;
     height: number;
@@ -26,6 +24,8 @@ export default class Eraser {
         y: number | null;
         d: number | null;
     }): void;
+    generateD(pressure: any): number;
+    setPrev(x: number, y: number, pressure: any): void;
     pushPoints({ x, y, pressure, pointerType }: {
         x: number;
         y: number;

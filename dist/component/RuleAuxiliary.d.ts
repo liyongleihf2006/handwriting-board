@@ -9,5 +9,6 @@ export default class RuleAuxiliary {
     worldOffsetX: number;
     worldOffsetY: number;
     constructor(width: number, height: number, ruleStrokeStyle: string, ruleGap: number, ruleUnitLen: number);
+    resize(width: number, height: number): void;
     draw(worldOffsetX: number, worldOffsetY: number): void;
 }

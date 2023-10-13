@@ -4,5 +4,6 @@ export default class Eraser {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     constructor(width: number, height: number);
-    draw(cleanX: number, cleanY: number, cleanWidth: number, cleanHeight: number): void;
+    resize(width: number, height: number): void;
+    draw(cleanX: number, cleanY: number, r: number): void;
 }

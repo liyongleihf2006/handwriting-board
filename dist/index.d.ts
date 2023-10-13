@@ -1,12 +1,12 @@
-import type { Options, ContainerOffset, Coords, OnChange, ScrollRange } from './type';
+import type { Options, PreStore, Store, ContainerOffset, Coords, OnChange, ScrollRange } from './type';
 import { WriteModel, BGPattern, ScrollDirection, ShapeType } from './enum';
 export { WriteModel, BGPattern, ScrollDirection, ShapeType };
 export default class Board {
     container: HTMLDivElement;
     private width;
     private height;
-    private worldOffsetX;
-    private worldOffsetY;
+    worldOffsetX: number;
+    worldOffsetY: number;
     private scrolling;
     private cleanState;
     private cleanX?;
@@ -42,8 +42,7 @@ export default class Board {
     ruleStrokeStyle: string;
     voice: number;
     color: string;
-    cleanWidth: number;
-    cleanHeight: number;
+    cleanR: number;
     stack: boolean;
     moveCountTotal: number;
     writeLocked: boolean;
@@ -54,7 +53,15 @@ export default class Board {
     useShapeType: boolean;
     containerOffset: ContainerOffset;
     onChange: OnChange | undefined;
+    store: Store;
+    hash: number | string;
+    justifyDus: number[];
     constructor(container: HTMLDivElement, options?: Options);
+    set preStore(preStore: PreStore);
+    get preStore(): PreStore;
+    updateWorldOffset(deltaX: number, deltaY: number): void;
+    updateHash(hash: number | string): void;
+    resize(): void;
     setVoice(voice?: number): void;
     showBG(): void;
     hideBG(): void;
@@ -74,7 +81,7 @@ export default class Board {
     redo(): void;
     clean(): void;
     unclean(): void;
-    draw(): void;
+    draw(showDu?: boolean, duCx?: number, duCy?: number): void;
     private doPushPoints;
     private loadEvent;
     getPageCoords: (touches: TouchList | Coords[]) => {
