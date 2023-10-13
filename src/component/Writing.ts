@@ -166,8 +166,38 @@ export default class Writing{
       worldOffsetY,
       imageData,
       fragments,
-      colLen
+      colLen,
+      height:this.height
     });
+    this.washStore();
+  }
+  washStore(){
+    const store = this.store;
+    const lastStoreItem = store[store.length - 1];
+    const {worldOffsetX:lastWorldOffsetX,worldOffsetY:lastWorldOffsetY,colLen:lastColLen,height:lastHeight} = lastStoreItem;
+
+    const preStoreItems = store.slice(0,store.length - 1);
+    for(let i = 0;i<preStoreItems.length;i++){
+      const {fragments,worldOffsetX,worldOffsetY} = preStoreItems[i];
+      const clearStartRow = lastWorldOffsetY - worldOffsetY;
+      const clearStartCol = (lastWorldOffsetX - worldOffsetX) * 4;
+      const clearEndCol = clearStartCol + lastColLen;
+      const clearEndRow = clearStartRow + lastHeight;
+      for(let j = fragments.length - 1;j>=0;j--){
+        const fragment = fragments[j];
+        const {index} = fragment;
+        if(index>=clearStartRow && index<clearEndRow){
+          const data = fragment.data;
+          const len = Math.min(data.length,clearEndCol);
+          for(let i = clearStartCol;i<len;i+=4){
+            if(data[i+3]){
+              data[i+3] = 0;
+            }
+          }
+        }
+      }
+    }
+
   }
   putImageData(worldOffsetX:number,worldOffsetY:number){
     const width = this.width;

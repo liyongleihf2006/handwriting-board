@@ -41,7 +41,8 @@ export type StoreItem = {
   worldOffsetY: number,
   imageData: ImageData,
   fragments: {data:Uint8ClampedArray,index:number,startCol:number,endCol:number}[],
-  colLen: number
+  colLen: number,
+  height:number
 }
 export type PreStore = StoreItem[];
 export type Store = Record<number|string,PreStore>;
